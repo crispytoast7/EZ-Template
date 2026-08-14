@@ -16,6 +16,25 @@
 
 [See a complete playlist of EZ-Template autons here!](https://www.youtube.com/playlist?list=PLyZbi14KopZK70GTSD5NpygoAcM2_ls7T)
 
+
+## Fork additions (crispytoast7/EZ-Template, branch 462-additions)
+
+This fork adds five modules to stock EZ-Template 3.2.2, all exposed through
+`EZ-Template/api.hpp`:
+
+- **`ez::dsr`** — four-sided distance-sensor position resets with rejection
+  guards (`EZ-Template/dsr.hpp`)
+- **`ez::PIDAutoTuner`** — relay-feedback auto-tuning for drive/turn/swing/
+  heading with SD persistence, tracker-offset measurement, and an interactive
+  IMU scale wizard (`EZ-Template/tuner.hpp`)
+- **`ez::json_*`** — SD-card JSON autonomous routines planned in
+  `tools/auton_planner.html` (`EZ-Template/json_auton.hpp`)
+- **`ez::health`** — device preflight: IMU, drive motors, odom trackers, and
+  DSR sensors (`EZ-Template/health.hpp`)
+- **`ez::screen_flip_set`** — 180-degree screen rotation for upside-down
+  mounted brains, experimental (`EZ-Template/display.hpp`)
+
+
 ## [Discord Server](https://discord.gg/EHjXBcK2Gy)
 Need extra assistance using EZ-Template?  Feel free to join our [Discord Server](https://discord.gg/EHjXBcK2Gy)! 
 
