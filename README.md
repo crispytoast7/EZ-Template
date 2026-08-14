@@ -17,7 +17,7 @@
 [See a complete playlist of EZ-Template autons here!](https://www.youtube.com/playlist?list=PLyZbi14KopZK70GTSD5NpygoAcM2_ls7T)
 
 
-## Fork additions (crispytoast7/EZ-Template, branch 462-additions)
+## Austin's fork — VEX Team 462 Override
 
 This fork adds five modules to stock EZ-Template 3.2.2, all exposed through
 `EZ-Template/api.hpp`:
