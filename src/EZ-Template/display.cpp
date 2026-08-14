@@ -9,6 +9,32 @@ namespace {
 int g_rotation = 0;
 }
 
+#if LVGL_VERSION_MAJOR >= 9
+
+void screen_rotation_set(int degrees) {
+  lv_display_rotation_t rot;
+  switch (degrees) {
+    case 0:   rot = LV_DISPLAY_ROTATION_0; break;
+    case 90:  rot = LV_DISPLAY_ROTATION_90; break;
+    case 180: rot = LV_DISPLAY_ROTATION_180; break;
+    case 270: rot = LV_DISPLAY_ROTATION_270; break;
+    default:
+      printf("[display] Invalid rotation %d; use 0, 90, 180, or 270.\n", degrees);
+      return;
+  }
+
+  lv_display_t* disp = lv_display_get_default();
+  if (disp == nullptr) {
+    printf("[display] No LVGL display yet; initialize the screen first.\n");
+    return;
+  }
+  lv_display_set_rotation(disp, rot);
+  g_rotation = degrees;
+  printf("[display] Screen rotation set to %d degrees.\n", degrees);
+}
+
+#else  // LVGL 8
+
 void screen_rotation_set(int degrees) {
   lv_disp_rot_t rot;
   switch (degrees) {
@@ -31,6 +57,8 @@ void screen_rotation_set(int degrees) {
   g_rotation = degrees;
   printf("[display] Screen rotation set to %d degrees.\n", degrees);
 }
+
+#endif
 
 int screen_rotation_get() { return g_rotation; }
 
