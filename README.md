@@ -27,12 +27,13 @@ This fork adds five modules to stock EZ-Template 3.2.2, all exposed through
 - **`ez::PIDAutoTuner`** — relay-feedback auto-tuning for drive/turn/swing/
   heading with SD persistence, tracker-offset measurement, and an interactive
   IMU scale wizard (`EZ-Template/tuner.hpp`)
-- **`ez::json_*`** — SD-card JSON autonomous routines planned in
-  `tools/auton_planner.html` (`EZ-Template/json_auton.hpp`)
+- **`ez::json_*`** — SD-card JSON autonomous routines
+  (`EZ-Template/json_auton.hpp`)
 - **`ez::health`** — device preflight: IMU, drive motors, odom trackers, and
   DSR sensors (`EZ-Template/health.hpp`)
-- **`ez::screen_flip_set`** — 180-degree screen rotation for upside-down
-  mounted brains, experimental (`EZ-Template/display.hpp`)
+- **`ez::screen_rotation_set`** — screen rotation in 90-degree steps for
+  sideways or upside-down mounted brains, experimental
+  (`EZ-Template/display.hpp`)
 
 
 ## [Discord Server](https://discord.gg/EHjXBcK2Gy)
