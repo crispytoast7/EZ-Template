@@ -78,12 +78,17 @@ testing this branch comes after `462-additions`. nothing here has run on real ha
 
 - [ ] builds boot on a real brain with kernel 4.2.2 (the hard-float fix is the whole point of this branch)
 - [ ] lemlib hardware 0.5.0 devices respond + health checks see them
-- [ ] health preflight catches dead motors/sensors and passes when everything's plugged in
-- [ ] auto tuner end to end: relay test oscillates, constants usable at 12/24/48 in and 45/90/135 deg, runway/temp/battery guards fire, sd save + reload on boot
-- [ ] tracker offset spin test matches a tape measure (sign/flip included), odom stops drifting sideways
-- [ ] imu scale wizard lands near 1.0 and persists
+- [ ] health preflight catches dead motors/sensors and passes when everything's plugged in (test it lying too: unplug one motor + one sensor and check it names them with the right ports)
+- [ ] auto tuner end to end: relay test oscillates, constants usable at 12/24/48 in and 45/90/135 deg, runway abort actually cuts motors before the field edge, temp wait resumes after cooling, sd save + reload on boot
+- [ ] heading hold, both paths: derived-from-drive (what "everything" gives you) drives straight without jitter; tune_heading relay version if you want it tighter
+- [ ] interactive tuner menu buttons feel right + don't fight the stock pid tuner on X
+- [ ] imu scale wizard lands near 1.0 and persists — run it BEFORE the tracker offsets, the offset math trusts the imu
+- [ ] tracker offset spin test on every installed tracker (vertical AND horizontal): each matches a tape measure (sign/flip included), odom stops drifting sideways
 - [ ] dsr with real sensors: noise/confidence, off-square + blocked-view rejection, corrected pose matches tape measure on all four sides
 - [ ] screen rotation on a rotated brain, portrait selector at 90/270 included (lvgl 9 port is compile-verified only — it has never rendered anywhere)
+- [ ] brain pid tuner (X) while portrait rotation is active — known untested interaction, may draw llemu widgets onto the portrait screen
+- [ ] boot with NO sd card: tuner save fails gracefully, constants fall back to whatever's in code
+- [ ] on a comp switch: pid tuner + run-auton-on-DOWN+B stay disabled, selector still pages, selected auton fires in auton mode
 - [ ] json autons smoke test: file loads, selector shows names, one path + dsr action runs
 
 ## branches
