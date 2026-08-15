@@ -41,7 +41,7 @@ tuner.tune_swing(90.0, 60);
 tuner.save_to_sd();
 ```
 
-or use the controller menu and pick what to tune at run time — `tuner.interactive(master, &horiz_tracker)` — LEFT/RIGHT selects (drive / turn / swing / heading / everything / tracker offset), A runs it, B saves and exits. "everything" runs drive, heading-derived-from-drive, turn, and swing — it does NOT run the heading relay test or the tracker offset; pick those individually. the tracker offset item only shows up if you pass a horizontal tracker.
+or use the controller menu and pick what to tune at run time — `tuner.interactive(master)` — LEFT/RIGHT selects (drive / turn / swing / heading / everything / tracker offset), A runs it, B saves and exits. "everything" runs drive, heading-derived-from-drive, turn, and swing — it does NOT run the heading relay test or the tracker offset; pick those individually. the tracker offset item shows up if the chassis has any tracking wheel installed, and one spin sequence measures ALL of them (vertical and horizontal) at once — each gets applied and saved under its own sd label. register your trackers on the chassis before calling `ez::pid_constants_load()` so the saved offsets have somewhere to go on boot.
 
 heads up: nothing calls `interactive()` for you — the example `main.cpp` doesn't wire it in anywhere, so add it yourself (an auton selector entry is good).
 
