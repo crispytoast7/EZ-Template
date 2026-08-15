@@ -1,8 +1,8 @@
 # EZ-Template — 462 fork
 
-> **status: nothing here has been tested on a robot yet.** it all builds clean, but i'm testing everything in a few weeks when i'm back at school — treat every feature as unverified until then.
+> **status: nothing here has been tested on a robot yet.** i'm testing everything in a few weeks when i'm back at school — treat every feature as unverified until then.
 
-fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) v3.2.2 with extra modules for team 462 Override. everything below is what's different from stock EZ — for everything else see the [EZ docs](https://ez-robotics.github.io/EZ-Template/).
+fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) v3.2.2 with extra modules for my team. everything below is what's different from stock EZ — for everything else see the [EZ docs](https://ez-robotics.github.io/EZ-Template/).
 
 ## added modules
 
