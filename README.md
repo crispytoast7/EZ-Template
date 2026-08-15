@@ -25,7 +25,7 @@ if (ez::dsr::correct(chassis.drive_imu_get(), x, y)) {
 
 ### auto tuner (`EZ-Template/tuner.hpp`)
 
-relay-feedback (astrom-hagglund) auto tuning for drive/turn/swing/heading PIDs: a relay test measures the ultimate gain and period (averaged over 3 runs), tyreus-luyben turns them into constants, then kp is bisected until every move size passes — 12/24/48 in for drive, 45/90/135 deg for turns — without blowing the overshoot limit. watches motor temps and battery the whole time, and every translating test stays inside a runway (`runway_set`, default 60 in, min 24) so it can run on a real field.
+relay-feedback auto tuning for drive/turn/swing/heading PIDs: a relay test measures the ultimate gain and period (averaged over 3 runs). this is then tuned into constants. kp is bisected until every move size passes — 12/24/48 in for drive, 45/90/135 deg for turns — without going over the overshoot limit. it monitors motor temps and battery the whole time, and every translating test stays inside a runway (`runway_set`, default 60 in, min 24) so it can run on a vex field.
 
 heading has two paths: `tune_heading` relay-tests the heading hold while driving forward (gains capped against the drive result so straight driving can't jitter), or `set_heading_from_drive` derives conservative constants from the drive tune without moving.
 
@@ -43,7 +43,7 @@ tuner.save_to_sd();
 
 or use the controller menu and pick what to tune at run time — `tuner.interactive(master, &horiz_tracker)` — LEFT/RIGHT selects (drive / turn / swing / heading / everything / tracker offset), A runs it, B saves and exits. "everything" runs drive, heading-derived-from-drive, turn, and swing — it does NOT run the heading relay test or the tracker offset; pick those individually. the tracker offset item only shows up if you pass a horizontal tracker.
 
-heads up: nothing calls `interactive()` for you — the example `main.cpp` doesn't wire it in anywhere, so add it yourself (an auton selector entry works well).
+heads up: nothing calls `interactive()` for you — the example `main.cpp` doesn't wire it in anywhere, so add it yourself (an auton selector entry is good).
 
 none of the modules bind any controller buttons on their own; the interactive tuner and the imu wizard only read buttons inside the function you chose to call.
 
@@ -66,7 +66,7 @@ ez::json_register_selector(chassis);  // in initialize()
 
 ### screen rotation (`EZ-Template/display.hpp`)
 
-`ez::screen_rotation_set(90)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. touch rotates with it — lvgl transforms pointer input itself whenever display rotation is set.
+`ez::screen_rotation_set(90)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. touch rotates with it.
 
 at 90/270 the screen goes portrait, which llemu's fixed layout can't fit — so the selector rebuilds as a portrait copy of the llemu screen: same colors, font, and three-button bar, but long lines wrap instead of clipping and the buttons forward to llemu's real ones, so registered callbacks behave identically. 0/180 keep stock llemu untouched.
 
@@ -89,4 +89,4 @@ testing this branch comes after `462-additions`. nothing here has run on real ha
 ## branches
 
 - `462-additions` — pros kernel 4.1.1 (stable). tested first.
-- `pros-4.2.2` — this. experimental: builds on kernel 4.2.2 (fixes the hard-float/softfp lib mismatch that breaks 4.2.2 builds) and adds lemlib hardware 0.5.0 + units, hooked into health checks. tested after `462-additions`.
+- `pros-4.2.2` — this. experimental: eventually will build on kernel 4.2.2 and add lemlib hardware 0.5.0 + units, hooked into health checks. tested after `462-additions`.
