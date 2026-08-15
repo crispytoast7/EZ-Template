@@ -18,31 +18,44 @@ struct TunerResult {
   std::string message;
 };
 
-/// Applies saved PID constants (and the tracking-wheel offset, when
-/// `horiz_tracker` is given) from the SD card. Returns false if the file is
-/// missing or contains nothing usable. Call once at startup before setting
-/// fallback constants.
+/// Which chassis slot a tracking wheel sits in. Left and right are parallel
+/// to the drive, back and front are perpendicular; the two axes take opposite
+/// signs in EZ-Template's tracking math, so a measured offset cannot be
+/// applied without knowing the slot.
+enum class tracker_slot { LEFT, RIGHT, BACK, FRONT };
+
+/// Applies saved PID constants, tracking-wheel offsets and the IMU scaler
+/// from the SD card. Offsets are applied to whichever trackers are registered
+/// on the chassis, so set them with odom_tracker_*_set() BEFORE calling this.
+/// Returns false if the file is missing or contains nothing usable. Call once
+/// at startup before setting fallback constants.
 bool pid_constants_load(ez::Drive& chassis,
-                        ez::tracking_wheel* horiz_tracker = nullptr,
                         const char* path = "/usd/pid_constants.txt");
 
-/// Applies a measured horizontal-tracker offset. `measured` is the signed
-/// rolled-distance / radians-turned value from a spin test; the sign is
+/// Applies a measured tracker offset to the wheel in `slot`. `measured` is the
+/// signed rolled-distance / radians-turned value from a spin test; the sign is
 /// translated into EZ-Template's magnitude-plus-flip convention.
-void tracker_offset_apply(ez::tracking_wheel& tracker, double measured);
+void tracker_offset_apply(ez::tracking_wheel& tracker, double measured, tracker_slot slot);
 
-/// Persists a measured tracker offset without touching the PID lines in the
+/// Persists one slot's measured offset without touching the other lines in the
 /// same file. Loaded automatically by pid_constants_load.
-bool tracker_offset_save(double measured, const char* path = "/usd/pid_constants.txt");
+bool tracker_offset_save(tracker_slot slot, double measured,
+                         const char* path = "/usd/pid_constants.txt");
 
-/// Measures a horizontal tracking wheel's distance-to-center by spinning in
-/// place: during pure rotation the wheel rolls offset * angle, so the offset
-/// is rolled distance / radians turned, averaged over `iterations` full
-/// turns. Returns the signed offset for tracker_offset_apply and
-/// tracker_offset_save, or NAN if no turn completed. Needs ~2 ft of clear
-/// space around the robot.
+/// Measures one tracking wheel's distance-to-center by spinning in place:
+/// during pure rotation the wheel rolls offset * angle, so the offset is
+/// rolled distance / radians turned, averaged over `iterations` full turns.
+/// Returns the signed offset for tracker_offset_apply and tracker_offset_save,
+/// or NAN if no turn completed. Needs ~2 ft of clear space around the robot.
 double tracker_offset_measure(ez::Drive& chassis, ez::tracking_wheel& tracker,
                               int iterations = 5, int turn_speed = 90);
+
+/// Measures every tracking wheel registered on the chassis in one spin
+/// sequence, since during pure rotation all of them roll offset * angle at
+/// once. Each result is applied to its wheel and saved to the SD card under
+/// its slot. Returns how many trackers were measured. Needs ~2 ft of clear
+/// space around the robot.
+int tracker_offsets_measure(ez::Drive& chassis, int iterations = 5, int turn_speed = 90);
 
 /// Interactive IMU scale calibration. Prompts on the controller: rotate the
 /// robot by hand exactly `turns` full rotations against a straight edge, then
@@ -89,11 +102,10 @@ class PIDAutoTuner {
   bool save_to_sd(const char* path = "/usd/pid_constants.txt");
 
   /// Controller-driven tuning menu, so one selector entry can tune anything.
-  /// LEFT/RIGHT pick an item (drive, turn, swing, heading, tracker offset,
-  /// everything), A runs it, B saves to the SD card and exits. Pass the
-  /// horizontal tracking wheel to enable the offset item.
-  void interactive(pros::Controller& controller,
-                   ez::tracking_wheel* horiz_tracker = nullptr);
+  /// LEFT/RIGHT pick an item (drive, turn, swing, heading, everything, tracker
+  /// offsets), A runs it, B saves to the SD card and exits. The tracker offset
+  /// item only appears when the chassis has at least one tracking wheel.
+  void interactive(pros::Controller& controller);
 
  private:
   ez::Drive& chassis;
