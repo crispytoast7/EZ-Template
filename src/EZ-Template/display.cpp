@@ -221,6 +221,9 @@ void screen_line_set(int line, std::string text) {
     if (line >= 0 && line < LINE_COUNT) lv_label_set_text(g_portrait_lines[line], text.c_str());
     return;
   }
+  // The global screen task starts printing at static-init time, before LLEMU
+  // exists; under lvgl 9 touching its null labels corrupts the heap.
+  if (!pros::lcd::is_initialized()) return;
   pros::lcd::set_text(line, text);
 }
 
@@ -231,6 +234,7 @@ void screen_line_clear(int line) {
     if (line >= 0 && line < LINE_COUNT) lv_label_set_text(g_portrait_lines[line], "");
     return;
   }
+  if (!pros::lcd::is_initialized()) return;
   pros::lcd::clear_line(line);
 }
 
@@ -241,6 +245,7 @@ void screen_lines_clear() {
     for (int i = 0; i < LINE_COUNT; i++) lv_label_set_text(g_portrait_lines[i], "");
     return;
   }
+  if (!pros::lcd::is_initialized()) return;
   pros::lcd::clear();
 }
 
