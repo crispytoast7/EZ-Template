@@ -60,7 +60,7 @@ ez::json_register_selector(chassis);  // in initialize()
 
 ### screen rotation (`EZ-Template/display.hpp`)
 
-`ez::screen_rotation_set(180)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. experimental — touch input doesn't rotate with it.
+`ez::screen_rotation_set(180)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. touch rotates with it — lvgl 8.3 transforms pointer input itself whenever display rotation is set. experimental — unverified on real hardware; 90/270 swap the screen's width and height.
 
 ## what's left to test on a robot
 
