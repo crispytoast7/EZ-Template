@@ -8,6 +8,9 @@
 
 namespace ez {
 
+// Left, right, back, front.
+static constexpr int TRACKER_SLOTS = 4;
+
 PIDAutoTuner::PIDAutoTuner(ez::Drive& chassis) : chassis(chassis) {}
 
 void PIDAutoTuner::runway_set(double inches) {
@@ -451,9 +454,14 @@ bool PIDAutoTuner::save_to_sd(const char* path) {
   return true;
 }
 
-double tracker_offset_measure(ez::Drive& chassis, ez::tracking_wheel& tracker,
-                              int iterations, int turn_speed) {
-  double sum = 0.0;
+// One spin sequence shared by every tracker: each wheel's rolled distance per
+// radian turned, averaged over the runs that completed a turn. Returns the
+// number of runs used, and fills offsets[] with the averages.
+static int spin_offsets(ez::Drive& chassis, ez::tracking_wheel* const* trackers,
+                        const char* const* names, double* offsets, int count,
+                        int iterations, int turn_speed) {
+  double start[TRACKER_SLOTS] = {0.0, 0.0, 0.0, 0.0};
+  for (int j = 0; j < count; j++) offsets[j] = 0.0;
   int used = 0;
 
   for (int i = 0; i < iterations; i++) {
@@ -461,33 +469,108 @@ double tracker_offset_measure(ez::Drive& chassis, ez::tracking_wheel& tracker,
     chassis.drive_imu_reset();
     chassis.drive_sensor_reset();
 
-    double start = tracker.get();
-    chassis.pid_turn_set(360.0, turn_speed);
+    for (int j = 0; j < count; j++) start[j] = trackers[j]->get();
+
+    // raw, so a full turn is not shortest-pathed into no motion at all.
+    chassis.pid_turn_set(360.0, turn_speed, ez::raw);
     chassis.pid_wait();
     pros::delay(300);
 
     double turned_rad = chassis.drive_imu_get() * M_PI / 180.0;
-    double rolled = tracker.get() - start;
     if (std::fabs(turned_rad) < 0.5) continue;
 
-    double offset = rolled / turned_rad;
-    printf("[tuner] offset run %d: rolled %.2f in over %.1f deg -> %.3f in\n",
-           i + 1, rolled, turned_rad * 180.0 / M_PI, offset);
-    sum += offset;
+    for (int j = 0; j < count; j++) {
+      double rolled = trackers[j]->get() - start[j];
+      double offset = rolled / turned_rad;
+      printf("[tuner] %s run %d: rolled %.2f in over %.1f deg -> %.3f in\n",
+             names[j], i + 1, rolled, turned_rad * 180.0 / M_PI, offset);
+      offsets[j] += offset;
+    }
     used++;
   }
 
+  if (used > 0)
+    for (int j = 0; j < count; j++) offsets[j] /= used;
+  return used;
+}
+
+static const char* slot_name(tracker_slot slot) {
+  switch (slot) {
+    case tracker_slot::LEFT:  return "left";
+    case tracker_slot::RIGHT: return "right";
+    case tracker_slot::FRONT: return "front";
+    default:                  return "back";
+  }
+}
+
+static const char* slot_label(tracker_slot slot) {
+  switch (slot) {
+    case tracker_slot::LEFT:  return "trk-l";
+    case tracker_slot::RIGHT: return "trk-r";
+    case tracker_slot::FRONT: return "trk-f";
+    default:                  return "trk-b";
+  }
+}
+
+double tracker_offset_measure(ez::Drive& chassis, ez::tracking_wheel& tracker,
+                              int iterations, int turn_speed) {
+  ez::tracking_wheel* one[1] = {&tracker};
+  const char* name[1] = {"offset"};
+  double offset[1] = {0.0};
+
+  int used = spin_offsets(chassis, one, name, offset, 1, iterations, turn_speed);
   if (used == 0) {
     printf("[tuner] Tracker offset measurement failed: no full turns completed.\n");
     return NAN;
   }
-  double avg = sum / used;
-  printf("[tuner] Tracker offset: %.3f in (from %d runs)\n", avg, used);
-  return avg;
+  printf("[tuner] Tracker offset: %.3f in (from %d runs)\n", offset[0], used);
+  return offset[0];
 }
 
-void PIDAutoTuner::interactive(pros::Controller& controller, ez::tracking_wheel* horiz_tracker) {
-  const int n = horiz_tracker ? 6 : 5;
+int tracker_offsets_measure(ez::Drive& chassis, int iterations, int turn_speed) {
+  ez::tracking_wheel* all[TRACKER_SLOTS] = {chassis.odom_tracker_left, chassis.odom_tracker_right,
+                                            chassis.odom_tracker_back, chassis.odom_tracker_front};
+  const tracker_slot all_slots[TRACKER_SLOTS] = {tracker_slot::LEFT, tracker_slot::RIGHT,
+                                                 tracker_slot::BACK, tracker_slot::FRONT};
+
+  ez::tracking_wheel* trackers[TRACKER_SLOTS];
+  tracker_slot slots[TRACKER_SLOTS];
+  const char* names[TRACKER_SLOTS];
+  double offsets[TRACKER_SLOTS];
+  int count = 0;
+
+  for (int i = 0; i < TRACKER_SLOTS; i++) {
+    if (all[i] == nullptr) continue;
+    trackers[count] = all[i];
+    slots[count] = all_slots[i];
+    names[count] = slot_name(all_slots[i]);
+    count++;
+  }
+
+  if (count == 0) {
+    printf("[tuner] No tracking wheels on the chassis, nothing to measure.\n");
+    return 0;
+  }
+
+  printf("[tuner] Tracker offsets: %d wheel(s), %d spins.\n", count, iterations);
+  int used = spin_offsets(chassis, trackers, names, offsets, count, iterations, turn_speed);
+  if (used == 0) {
+    printf("[tuner] Tracker offset measurement failed: no full turns completed.\n");
+    return 0;
+  }
+
+  for (int i = 0; i < count; i++) {
+    printf("[tuner] %s tracker offset: %.3f in (from %d runs)\n", names[i], offsets[i], used);
+    tracker_offset_apply(*trackers[i], offsets[i], slots[i]);
+    tracker_offset_save(slots[i], offsets[i]);
+  }
+  return count;
+}
+
+void PIDAutoTuner::interactive(pros::Controller& controller) {
+  const bool has_tracker = chassis.odom_tracker_left != nullptr || chassis.odom_tracker_right != nullptr ||
+                           chassis.odom_tracker_back != nullptr || chassis.odom_tracker_front != nullptr;
+  const int n = has_tracker ? 6 : 5;
   const char* items[6] = {"Drive", "Turn", "Swing", "Heading", "Everything", "Trk offset"};
   int sel = 0;
 
@@ -521,13 +604,7 @@ void PIDAutoTuner::interactive(pros::Controller& controller, ez::tracking_wheel*
           tune_swing();
           break;
         case 5:
-          if (horiz_tracker) {
-            double m = tracker_offset_measure(chassis, *horiz_tracker);
-            if (!std::isnan(m)) {
-              tracker_offset_apply(*horiz_tracker, m);
-              tracker_offset_save(m);
-            }
-          }
+          tracker_offsets_measure(chassis);
           break;
       }
       controller.rumble(".");
@@ -541,13 +618,23 @@ void PIDAutoTuner::interactive(pros::Controller& controller, ez::tracking_wheel*
   controller.set_text(0, 0, "Saved            ");
 }
 
-void tracker_offset_apply(ez::tracking_wheel& tracker, double measured) {
-  // solve_xy_horiz adds distance_to_center to rolled/theta, so the effective
-  // value must be the negative of the measurement: positive measurements flip.
-  tracker.distance_to_center_set(std::fabs(measured));
-  tracker.distance_to_center_flip_set(measured > 0.0);
-  printf("[tuner] Tracker offset set: %.3f in (flip %s)\n",
-         std::fabs(measured), measured > 0.0 ? "on" : "off");
+void tracker_offset_apply(ez::tracking_wheel& tracker, double measured, tracker_slot slot) {
+  // A spin about the tracking center must leave that center still, so the
+  // bracket in each solver has to cancel. The angle they are handed is math
+  // standard, the negative of the imu (tracking.cpp:169), so the rolled per
+  // radian they see is -measured. solve_xy_vert subtracts distance_to_center
+  // (tracking.cpp:90) and solve_xy_horiz adds it (tracking.cpp:114), so a
+  // parallel wheel wants -measured and a perpendicular wheel wants +measured.
+  // Which side of center a wheel is on is already carried by the sign of the
+  // measurement: the parallel case reproduces the drive's own known-good track
+  // widths, left negative and right positive (tracking.cpp:35-36).
+  bool perpendicular = slot == tracker_slot::BACK || slot == tracker_slot::FRONT;
+  double effective = perpendicular ? measured : -measured;
+
+  tracker.distance_to_center_set(std::fabs(effective));
+  tracker.distance_to_center_flip_set(effective < 0.0);
+  printf("[tuner] %s tracker offset set: %.3f in (flip %s)\n",
+         slot_name(slot), std::fabs(effective), effective < 0.0 ? "on" : "off");
 }
 
 // Read-modify-write of one labeled line so other lines in the file survive.
@@ -576,8 +663,8 @@ static bool sd_line_save(const char* label, double value, const char* path) {
   return true;
 }
 
-bool tracker_offset_save(double measured, const char* path) {
-  return sd_line_save("htrack", measured, path);
+bool tracker_offset_save(tracker_slot slot, double measured, const char* path) {
+  return sd_line_save(slot_label(slot), measured, path);
 }
 
 double imu_scale_measure(ez::Drive& chassis, pros::Controller& controller,
@@ -617,7 +704,14 @@ double imu_scale_measure(ez::Drive& chassis, pros::Controller& controller,
   return scaler;
 }
 
-bool pid_constants_load(ez::Drive& chassis, ez::tracking_wheel* horiz_tracker, const char* path) {
+// Skipped when that slot has no tracker on the chassis.
+static bool tracker_line_load(ez::tracking_wheel* tracker, double measured, tracker_slot slot) {
+  if (tracker == nullptr) return false;
+  tracker_offset_apply(*tracker, measured, slot);
+  return true;
+}
+
+bool pid_constants_load(ez::Drive& chassis, const char* path) {
   FILE* f = fopen(path, "r");
   if (!f) return false;
 
@@ -626,27 +720,39 @@ bool pid_constants_load(ez::Drive& chassis, ez::tracking_wheel* horiz_tracker, c
   bool loaded_any = false;
 
   while (fscanf(f, "%15s %lf %lf %lf", label, &kp, &ki, &kd) == 4) {
+    bool loaded = true;
     if (strcmp(label, "drive") == 0) {
       chassis.pid_drive_constants_set(kp, ki, kd);
-      loaded_any = true;
     } else if (strcmp(label, "heading") == 0) {
       chassis.pid_heading_constants_set(kp, ki, kd);
-      loaded_any = true;
     } else if (strcmp(label, "turn") == 0) {
       chassis.pid_turn_constants_set(kp, ki, kd);
-      loaded_any = true;
     } else if (strcmp(label, "swing") == 0) {
       chassis.pid_swing_constants_set(kp, ki, kd);
-      loaded_any = true;
-    } else if (strcmp(label, "htrack") == 0 && horiz_tracker != nullptr) {
-      tracker_offset_apply(*horiz_tracker, kp);
-      loaded_any = true;
+    } else if (strcmp(label, "trk-l") == 0) {
+      loaded = tracker_line_load(chassis.odom_tracker_left, kp, tracker_slot::LEFT);
+    } else if (strcmp(label, "trk-r") == 0) {
+      loaded = tracker_line_load(chassis.odom_tracker_right, kp, tracker_slot::RIGHT);
+    } else if (strcmp(label, "trk-b") == 0) {
+      loaded = tracker_line_load(chassis.odom_tracker_back, kp, tracker_slot::BACK);
+    } else if (strcmp(label, "trk-f") == 0) {
+      loaded = tracker_line_load(chassis.odom_tracker_front, kp, tracker_slot::FRONT);
+    } else if (strcmp(label, "htrack") == 0) {
+      // Legacy single-horizontal-tracker line.
+      if (chassis.odom_tracker_back != nullptr)
+        loaded = tracker_line_load(chassis.odom_tracker_back, kp, tracker_slot::BACK);
+      else
+        loaded = tracker_line_load(chassis.odom_tracker_front, kp, tracker_slot::FRONT);
     } else if (strcmp(label, "imuscale") == 0) {
       chassis.drive_imu_scaler_set(kp);
-      loaded_any = true;
+    } else {
+      loaded = false;
     }
-    if (loaded_any)
+
+    if (loaded) {
+      loaded_any = true;
       printf("[tuner] Loaded %s: %.4f %.6f %.4f\n", label, kp, ki, kd);
+    }
   }
 
   fclose(f);
