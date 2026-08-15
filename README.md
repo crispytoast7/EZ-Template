@@ -1,6 +1,6 @@
 # EZ-Template — 462 fork
 
-> **status: builds and boots in an emulator, no real hardware yet.** the whole image (kernel 4.1.1 + these modules) boots in [vex-v5-qemu](https://github.com/vexide/vex-v5-qemu) — `initialize()` runs to completion and opcontrol schedules. that proves the build links and doesn't fault, nothing more: motors/sensors are mocked, so everything physical is unverified until i'm back at school in a few weeks.
+> **status: builds and boots in an emulator, no real hardware yet.** Everything physical is unverified until i'm back at school in a few weeks.
 
 fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) v3.2.2 with extra modules for my team. everything below is what's different from stock EZ — for everything else see the [EZ docs](https://ez-robotics.github.io/EZ-Template/).
 
@@ -25,7 +25,7 @@ if (ez::dsr::correct(chassis.drive_imu_get(), x, y)) {
 
 ### auto tuner (`EZ-Template/tuner.hpp`)
 
-relay-feedback (astrom-hagglund) auto tuning for drive/turn/swing/heading PIDs: a relay test measures the ultimate gain and period (averaged over 3 runs), tyreus-luyben turns them into constants, then kp is bisected until every move size passes — 12/24/48 in for drive, 45/90/135 deg for turns — without blowing the overshoot limit. watches motor temps and battery the whole time, and every translating test stays inside a runway (`runway_set`, default 60 in, min 24) so it can run on a real field.
+relay-feedback auto tuning for drive/turn/swing/heading PIDs: a relay test measures the ultimate gain and period (averaged over 3 runs). this is then tuned into constants. kp is bisected until every move size passes — 12/24/48 in for drive, 45/90/135 deg for turns — without going over the overshoot limit. it monitors motor temps and battery the whole time, and every translating test stays inside a runway (`runway_set`, default 60 in, min 24) so it can run on a vex field. 
 
 heading has two paths: `tune_heading` relay-tests the heading hold while driving forward (gains capped against the drive result so straight driving can't jitter), or `set_heading_from_drive` derives conservative constants from the drive tune without moving.
 
@@ -43,7 +43,7 @@ tuner.save_to_sd();
 
 or use the controller menu and pick what to tune at run time — `tuner.interactive(master, &horiz_tracker)` — LEFT/RIGHT selects (drive / turn / swing / heading / everything / tracker offset), A runs it, B saves and exits. "everything" runs drive, heading-derived-from-drive, turn, and swing — it does NOT run the heading relay test or the tracker offset; pick those individually. the tracker offset item only shows up if you pass a horizontal tracker.
 
-heads up: nothing calls `interactive()` for you — the example `main.cpp` doesn't wire it in anywhere, so add it yourself (an auton selector entry works well).
+heads up: nothing calls `interactive()` for you — the example `main.cpp` doesn't wire it in anywhere, so add it yourself (an auton selector entry is good).
 
 none of the modules bind any controller buttons on their own; the interactive tuner and the imu wizard only read buttons inside the function you chose to call.
 
@@ -66,7 +66,7 @@ ez::json_register_selector(chassis);  // in initialize()
 
 ### screen rotation (`EZ-Template/display.hpp`)
 
-`ez::screen_rotation_set(90)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. touch rotates with it — lvgl transforms pointer input itself whenever display rotation is set.
+`ez::screen_rotation_set(90)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. touch rotates with it.
 
 at 90/270 the screen goes portrait (240 wide x 480 tall), which llemu's fixed layout can't fit — so the selector rebuilds as a portrait copy of the llemu screen: same colors, font, and three-button bar (styles pulled from the kernel's llemu itself), but long lines wrap instead of clipping and the buttons forward to llemu's real ones, so registered callbacks behave identically. 0/180 keep stock llemu untouched.
 
@@ -84,8 +84,9 @@ the image boots in the emulator, but everything physical still needs a real robo
 - [ ] dsr with real sensors: noise/confidence, off-square + blocked-view rejection, corrected pose matches tape measure on all four sides
 - [ ] screen rotation on a real brain (all 4 rotations + touch already verified in the emulator, portrait selector included)
 - [ ] json autons smoke test: file loads, selector shows names, one path + dsr action runs
+- [ ] get it running correctly on kernel 4.2.2 WITH LemLib hardware
 
 ## branches
 
 - `462-additions` — this, on pros kernel 4.1.1 (stable)
-- `pros-4.2.2` — experimental: builds on kernel 4.2.2 (fixes the hard-float/softfp lib mismatch that breaks 4.2.2 builds) and adds lemlib hardware 0.5.0 + units, hooked into health checks. not tested on a robot yet.
+- `pros-4.2.2` — experimental: eventually will build on kernel 4.2.2 and add lemlib hardware 0.5.0 + units, hooked into health checks
