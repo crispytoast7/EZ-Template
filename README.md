@@ -74,7 +74,7 @@ on this branch the portrait screen is ported to lvgl 9 (what kernel 4.2.2 vendor
 
 ## what's left to test on a robot
 
-testing this branch comes after `462-additions`. nothing here has run on real hardware — and unlike the 4.1.1 branch, the emulator is no help: vex-v5-qemu can't run this kernel (it stalls or data-aborts inside lvgl even on a pristine build), so everything below rides on a real brain.
+testing this branch comes after `462-additions`. nothing here has run on real hardware — and stock vex-v5-qemu can't run this kernel: a preemption deadlock in the emulator's own kernel shim (its uart spinlock, not this branch's code — gdb-verified, and the hard-float abi checks out consistent across every lib). it can't happen on a real brain, but it means emulator coverage here needs a patched emulator.
 
 - [ ] builds boot on a real brain with kernel 4.2.2 (the hard-float fix is the whole point of this branch)
 - [ ] lemlib hardware 0.5.0 devices respond + health checks see them
