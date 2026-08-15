@@ -1,6 +1,6 @@
 # EZ-Template — 462 fork
 
-> **status: nothing here has been tested on a robot yet.** i'm testing everything in a few weeks when i'm back at school — treat every feature as unverified until then.
+> **status: builds and boots in an emulator, no real hardware yet.** the whole image (kernel 4.1.1 + these modules) boots in [vex-v5-qemu](https://github.com/vexide/vex-v5-qemu) — `initialize()` runs to completion and opcontrol schedules. that proves the build links and doesn't fault, nothing more: motors/sensors are mocked, so everything physical is unverified until i'm back at school in a few weeks.
 
 fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) v3.2.2 with extra modules for my team. everything below is what's different from stock EZ — for everything else see the [EZ docs](https://ez-robotics.github.io/EZ-Template/).
 
@@ -60,7 +60,20 @@ ez::json_register_selector(chassis);  // in initialize()
 
 ### screen rotation (`EZ-Template/display.hpp`)
 
-`ez::screen_rotation_set(180)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. experimental — touch input doesn't rotate with it.
+`ez::screen_rotation_set(180)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. touch rotates with it — lvgl 8.3 transforms pointer input itself whenever display rotation is set. experimental — unverified on real hardware; 90/270 swap the screen's width and height.
+
+## what's left to test on a robot
+
+the image boots in the emulator, but everything physical still needs a real robot:
+
+- [ ] health preflight catches dead motors/sensors and passes when everything's plugged in
+- [ ] auto tuner end to end: relay test oscillates, constants usable at 12/24/48 in and 45/90/135 deg, runway/temp/battery guards fire, sd save + reload on boot
+- [ ] interactive tuner menu buttons feel right + don't fight the stock pid tuner on X
+- [ ] tracker offset spin test matches a tape measure (sign/flip included), odom stops drifting sideways
+- [ ] imu scale wizard lands near 1.0 and persists
+- [ ] dsr with real sensors: noise/confidence, off-square + blocked-view rejection, corrected pose matches tape measure on all four sides
+- [ ] screen rotation on a rotated brain: pixels and touch both line up
+- [ ] json autons smoke test: file loads, selector shows names, one path + dsr action runs
 
 ## branches
 
