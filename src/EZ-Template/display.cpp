@@ -52,6 +52,10 @@ void screen_rotation_set(int degrees) {
     printf("[display] No LVGL display yet; initialize the screen first.\n");
     return;
   }
+  // No indev hook here: LVGL 8.3.4 already rotates pointer input off
+  // disp->driver->rotated (lv_indev.c:347-354, inlined into
+  // lv_indev_read_timer_cb in the vendored liblvgl.a). Wrapping read_cb with
+  // ez::screen_touch_rotate would transform the point a second time.
   disp->driver->sw_rotate = 1;
   lv_disp_set_rotation(disp, rot);
   g_rotation = degrees;
