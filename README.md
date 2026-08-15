@@ -1,6 +1,6 @@
 # EZ-Template — 462 fork
 
-> **status: nothing here has been tested on a robot yet.** i'm testing everything in a few weeks when i'm back at school — treat every feature as unverified until then.
+> **status: this branch gets tested later.** `462-additions` is the priority when i'm back at school in a few weeks; this experimental kernel-4.2.2 branch gets tested after that. treat every feature as unverified until then.
 
 fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) v3.2.2 with extra modules for my team. everything below is what's different from stock EZ — for everything else see the [EZ docs](https://ez-robotics.github.io/EZ-Template/).
 
@@ -62,7 +62,21 @@ ez::json_register_selector(chassis);  // in initialize()
 
 `ez::screen_rotation_set(180)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. experimental — touch input doesn't rotate with it.
 
+## what's left to test on a robot
+
+testing this branch comes after `462-additions`. nothing here has run on real hardware — even the emulator boot check has only been done on the 4.1.1 branch so far.
+
+- [ ] builds boot on a real brain with kernel 4.2.2 (the hard-float fix is the whole point of this branch)
+- [ ] lemlib hardware 0.5.0 devices respond + health checks see them
+- [ ] health preflight catches dead motors/sensors and passes when everything's plugged in
+- [ ] auto tuner end to end: relay test oscillates, constants usable at 12/24/48 in and 45/90/135 deg, runway/temp/battery guards fire, sd save + reload on boot
+- [ ] tracker offset spin test matches a tape measure (sign/flip included), odom stops drifting sideways
+- [ ] imu scale wizard lands near 1.0 and persists
+- [ ] dsr with real sensors: noise/confidence, off-square + blocked-view rejection, corrected pose matches tape measure on all four sides
+- [ ] screen rotation on a rotated brain
+- [ ] json autons smoke test: file loads, selector shows names, one path + dsr action runs
+
 ## branches
 
-- `462-additions` — this, on pros kernel 4.1.1 (stable)
-- `pros-4.2.2` — experimental: builds on kernel 4.2.2 (fixes the hard-float/softfp lib mismatch that breaks 4.2.2 builds) and adds lemlib hardware 0.5.0 + units, hooked into health checks. not tested on a robot yet.
+- `462-additions` — pros kernel 4.1.1 (stable). tested first.
+- `pros-4.2.2` — this. experimental: builds on kernel 4.2.2 (fixes the hard-float/softfp lib mismatch that breaks 4.2.2 builds) and adds lemlib hardware 0.5.0 + units, hooked into health checks. tested after `462-additions`.
