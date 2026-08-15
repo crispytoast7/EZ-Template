@@ -44,3 +44,8 @@ EZ-Template-Example-Project/temp.errors
 EZ-Template-Example-Project/*.ini
 EZ-Template-Example-Project/.d/
 .d/
+bin/
+template/
+*.zip
+compile_commands.json
+.DS_Store

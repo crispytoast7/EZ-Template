@@ -1,84 +1,60 @@
-![](https://img.shields.io/github/downloads/EZ-Robotics/EZ-Template/total.svg)
-![](https://github.com/EZ-Robotics/EZ-Template/workflows/Build/badge.svg)
-[![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
+# EZ-Template — 462 fork
 
-⚡️ **coding made ez** ⚡️
+fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) v3.2.2 with extra modules for team 462 Override. everything below is what's different from stock EZ — for everything else see the [EZ docs](https://ez-robotics.github.io/EZ-Template/).
 
-💅 **docs and tutorials** 💅 
+## added modules
 
-💥 **pid, odometry, pure pursuit, boomerang** 💥
+all exposed through `EZ-Template/api.hpp`, namespace `ez`.
 
-📚 **focus on consistency** 📚
+### dsr — distance sensor wall resets (`EZ-Template/dsr.hpp`)
 
-🧐 **out of the box documentation** 🧐
+register a distance sensor per side (front/right/back/left) with its offset from the robot center. `ez::dsr::correct()` reads them, figures out which wall each one faces, and overwrites that axis of the pose. bad readings get rejected (low confidence, out of range, off square, or something in the way).
 
-🔌 **plug and play example project** 🔌
+```cpp
+ez::dsr::sensor_add(&back_distance, ez::dsr::Side::BACK, 7.0);
+ez::dsr::sensor_add(&right_distance, ez::dsr::Side::RIGHT, 7.0);
 
-[See a complete playlist of EZ-Template autons here!](https://www.youtube.com/playlist?list=PLyZbi14KopZK70GTSD5NpygoAcM2_ls7T)
+double x = chassis.odom_x_get(), y = chassis.odom_y_get();
+if (ez::dsr::correct(chassis.drive_imu_get(), x, y)) {
+  chassis.odom_x_set(x);
+  chassis.odom_y_set(y);
+}
+```
 
+### auto tuner (`EZ-Template/tuner.hpp`)
 
-## Austin's fork — VEX Team 462 Override
+relay-feedback auto tuning for drive/turn/swing/heading PIDs. checks the result at multiple move sizes (12/24/48 in, 45/90/135 deg), watches motor temps and battery, stays inside a runway so it can run on a real field, and saves to the sd card. `ez::pid_constants_load()` restores everything on boot. also measures the tracking wheel's distance-to-center from a spin test and has an imu scale wizard (`ez::imu_scale_measure`).
 
-This fork adds five modules to stock EZ-Template 3.2.2, all exposed through
-`EZ-Template/api.hpp`:
+```cpp
+ez::PIDAutoTuner tuner(chassis);
+tuner.runway_set(60.0);
+tuner.tune_drive(12.0, 60);
+tuner.set_heading_from_drive();
+tuner.tune_turn(90.0, 60);
+tuner.tune_swing(90.0, 60);
+tuner.save_to_sd();
+```
 
-- **`ez::dsr`** — four-sided distance-sensor position resets with rejection
-  guards (`EZ-Template/dsr.hpp`)
-- **`ez::PIDAutoTuner`** — relay-feedback auto-tuning for drive/turn/swing/
-  heading with SD persistence, tracker-offset measurement, and an interactive
-  IMU scale wizard (`EZ-Template/tuner.hpp`)
-- **`ez::json_*`** — SD-card JSON autonomous routines
-  (`EZ-Template/json_auton.hpp`)
-- **`ez::health`** — device preflight: IMU, drive motors, odom trackers, and
-  DSR sensors (`EZ-Template/health.hpp`)
-- **`ez::screen_rotation_set`** — screen rotation in 90-degree steps for
-  sideways or upside-down mounted brains, experimental
-  (`EZ-Template/display.hpp`)
+### json autons (`EZ-Template/json_auton.hpp`)
 
+runs autons from a json file on the sd card (`/usd/autons.json`) — each one shows up in the auton selector by name. supports smooth pure-pursuit runs, boomerang arrival headings, reverse, per-point speed/waits, and a built-in `dsr` action that squares up to the nearest wall and resets the pose. other actions go to a handler you set:
 
-## [Discord Server](https://discord.gg/EHjXBcK2Gy)
-Need extra assistance using EZ-Template?  Feel free to join our [Discord Server](https://discord.gg/EHjXBcK2Gy)! 
+```cpp
+ez::json_action_handler_set([](const std::string& a) {
+  if (a == "intake_on") { intake.move(127); return; }
+});
+ez::json_register_selector(chassis);  // in initialize()
+```
 
-## Features
-EZ-Template is built with high attention to the user experience.
+### health checks (`EZ-Template/health.hpp`)
 
-* Built with 💜 and [PROS](https://pros.cs.purdue.edu/)
-  * Powerful open source Development platform for VEX V5 
-  * Customize and extend with other community PROS libraries
-* 🔌 Example project is plug-and-play
-  * Simple to setup
-  * Get up and running in minutes
-* 👀 Simple to use API
-  * PID for driving, turning, swing turns, and arcs
-  * Odometry with Pure Pursuit and Boomerang
-  * Asynchronous PID with blocking functions
-  * "Tug of war" detection
-  * Overheat detection and exiting
-  * Live PID tuning
-  * Tracking wheel support
-* 📺 Autonomous selector
-  * Easy to add autons
-  * SD card saving
-* 🎮 Joystick control
-  * Tank drive, single stick arcade, and dual stick arcade
-  * Joystick input curves
-  * Adjust joystick curves live through the controller
-* PID for your own subsystems
-* Slew for your own subsystems
+`ez::health::preflight(chassis, master)` checks the imu, drive motors, odom trackers, and dsr sensors all respond, prints anything dead with its port, and rumbles the controller.
 
+### screen rotation (`EZ-Template/display.hpp`)
 
-## Design Principles
-* **Quick to get going.**  EZ-Template should make it easy to learn and use.  Anything is achievable by users, even if it takes them more code and more time to write.  
-* **Intuitive.**  Users will not feel overwhelmed when looking at an EZ-Template project or adding new features.  It should look intuitive and easy to build on top of.  
-* **Sensible Defaults.**  Common and popular performance optimizations and configurations will be done for users, but only with the option to override them.  
+`ez::screen_rotation_set(180)` rotates the brain screen in 90 deg steps for sideways/upside-down mounts. experimental — touch input doesn't rotate with it.
 
-We believe that, as developers, knowing how a library works helps us become better at using it.  We're dedicating effort to creating tutorials and documentation with the hope that reading it will gain the user a deeper understanding of the tool, and become even more proficient in using it.  
+## branches
 
-## [Support me on Patreon!](https://www.patreon.com/roboticsisez)
-Supporting me on Patreon will help guarantee that EZ-Template continues to get maintained and allow me to develop products for teams to use.  [Click here](https://www.patreon.com/roboticsisez) to see my Patreon!
-
-## [Download and Installation](https://ez-robotics.github.io/EZ-Template/tutorials/installation)
-Learn how to install and setup EZ-Template [here](https://ez-robotics.github.io/EZ-Template/tutorials/installation)!
-
-## [License](https://opensource.org/licenses/MPL-2.0)
-This project is licensed under the Mozilla Public License, version 2.0 - see the [LICENSE](https://opensource.org/licenses/MPL-2.0) file for the full license.
+- `462-additions` — this, on pros kernel 4.1.1 (stable)
+- `pros-4.2.2` — experimental: builds on kernel 4.2.2 (fixes the hard-float/softfp lib mismatch that breaks 4.2.2 builds) and adds lemlib hardware 0.5.0 + units, hooked into health checks. not tested on a robot yet.
