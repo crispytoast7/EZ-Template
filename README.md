@@ -74,7 +74,7 @@ on this branch the portrait screen is ported to lvgl 9 (what kernel 4.2.2 vendor
 
 ## what's left to test on a robot
 
-testing this branch comes after `462-additions`. nothing here has run on real hardware — and stock vex-v5-qemu can't run this kernel: a preemption deadlock in the emulator's own kernel shim (its uart spinlock, not this branch's code — gdb-verified, and the hard-float abi checks out consistent across every lib). it can't happen on a real brain, but it means emulator coverage here needs a patched emulator.
+testing this branch comes after `462-additions`. nothing here has run on real hardware yet — but the big 4.2.x mystery is solved: the frozen-black-screen that upstream hit on real robots ([ez-template pr #309](https://github.com/EZ-Robotics/EZ-Template/pull/309)) was pros kernel 4.2.2 dropping the `.stack` section from its linker script, so the boot stack tramples the last globals in bss — which then cascaded into ez writing through a null FILE* when fopen fails. both are fixed on this branch (gdb-verified in the emulator: abort gone, full pros banner prints). stock vex-v5-qemu can't run this kernel without local patches to its shim spinlocks, and one later boot hang is still being chased there.
 
 - [ ] builds boot on a real brain with kernel 4.2.2 (the hard-float fix is the whole point of this branch)
 - [ ] lemlib hardware 0.5.0 devices respond + health checks see them
