@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace ez {
 
 /// Rotates the brain screen in 90-degree steps for brains mounted sideways or
@@ -7,12 +9,35 @@ namespace ez {
 /// are rejected with a printed message. Call after the screen is initialized
 /// (ez::as::initialize or pros::lcd::initialize).
 ///
+/// At 90 and 270 the stock LLEMU screen is swapped for EZ's portrait screen:
+/// LLEMU builds its widgets at the resolution live when pros::lcd::initialize
+/// ran (480x272), so once the canvas becomes 272x480 its text runs off the
+/// right edge. The portrait screen re-flows the same LLEMU theme, font, print
+/// lines and three-button bar to the rotated resolution, wrapping long lines
+/// rather than clipping them, and replays its button presses onto LLEMU's own
+/// buttons so pros::lcd::register_btn*_cb callbacks behave identically.
+/// 0 and 180 restore LLEMU untouched.
+///
 /// Experimental, unverified on hardware: uses LVGL's software rotation on the
 /// live display driver. Touch rotates with the pixels, so on-screen buttons
 /// respond where they are drawn; LVGL applies that transform to its own
 /// pointer input. 90/270 swap the screen's width and height. The physical
 /// LLEMU buttons are unaffected.
 void screen_rotation_set(int degrees);
+
+/// True while the portrait screen is the loaded screen (rotation 90 or 270).
+bool screen_portrait_enabled();
+
+/// Writes one of the 8 print lines, to the portrait screen when it is loaded
+/// and to LLEMU otherwise. ez::screen_print routes through here.
+void screen_line_set(int line, std::string text);
+
+/// Clears one of the 8 print lines through the same routing as
+/// ez::screen_line_set.
+void screen_line_clear(int line);
+
+/// Clears all 8 print lines through the same routing as ez::screen_line_set.
+void screen_lines_clear();
 
 /// A point in screen coordinates.
 struct screen_point {
