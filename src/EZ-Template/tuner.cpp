@@ -451,6 +451,96 @@ bool PIDAutoTuner::save_to_sd(const char* path) {
   return true;
 }
 
+double tracker_offset_measure(ez::Drive& chassis, ez::tracking_wheel& tracker,
+                              int iterations, int turn_speed) {
+  double sum = 0.0;
+  int used = 0;
+
+  for (int i = 0; i < iterations; i++) {
+    chassis.pid_targets_reset();
+    chassis.drive_imu_reset();
+    chassis.drive_sensor_reset();
+
+    double start = tracker.get();
+    chassis.pid_turn_set(360.0, turn_speed);
+    chassis.pid_wait();
+    pros::delay(300);
+
+    double turned_rad = chassis.drive_imu_get() * M_PI / 180.0;
+    double rolled = tracker.get() - start;
+    if (std::fabs(turned_rad) < 0.5) continue;
+
+    double offset = rolled / turned_rad;
+    printf("[tuner] offset run %d: rolled %.2f in over %.1f deg -> %.3f in\n",
+           i + 1, rolled, turned_rad * 180.0 / M_PI, offset);
+    sum += offset;
+    used++;
+  }
+
+  if (used == 0) {
+    printf("[tuner] Tracker offset measurement failed: no full turns completed.\n");
+    return NAN;
+  }
+  double avg = sum / used;
+  printf("[tuner] Tracker offset: %.3f in (from %d runs)\n", avg, used);
+  return avg;
+}
+
+void PIDAutoTuner::interactive(pros::Controller& controller, ez::tracking_wheel* horiz_tracker) {
+  const int n = horiz_tracker ? 6 : 5;
+  const char* items[6] = {"Drive", "Turn", "Swing", "Heading", "Everything", "Trk offset"};
+  int sel = 0;
+
+  printf("[tuner] Interactive: LEFT/RIGHT pick, A runs, B saves + exits.\n");
+  controller.set_text(0, 0, "< " + std::string(items[sel]) + " >      ");
+
+  while (true) {
+    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+      sel = (sel + 1) % n;
+      controller.set_text(0, 0, "< " + std::string(items[sel]) + " >      ");
+    }
+    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+      sel = (sel + n - 1) % n;
+      controller.set_text(0, 0, "< " + std::string(items[sel]) + " >      ");
+    }
+    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) break;
+
+    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+      controller.set_text(0, 0, "Running " + std::string(items[sel]) + "  ");
+      switch (sel) {
+        case 0: tune_drive(); break;
+        case 1: tune_turn(); break;
+        case 2: tune_swing(); break;
+        case 3: tune_heading(); break;
+        case 4:
+          tune_drive();
+          set_heading_from_drive();
+          pros::delay(5000);
+          tune_turn();
+          pros::delay(5000);
+          tune_swing();
+          break;
+        case 5:
+          if (horiz_tracker) {
+            double m = tracker_offset_measure(chassis, *horiz_tracker);
+            if (!std::isnan(m)) {
+              tracker_offset_apply(*horiz_tracker, m);
+              tracker_offset_save(m);
+            }
+          }
+          break;
+      }
+      controller.rumble(".");
+      controller.set_text(0, 0, "< " + std::string(items[sel]) + " > done ");
+    }
+
+    pros::delay(50);
+  }
+
+  save_to_sd();
+  controller.set_text(0, 0, "Saved            ");
+}
+
 void tracker_offset_apply(ez::tracking_wheel& tracker, double measured) {
   // solve_xy_horiz adds distance_to_center to rolled/theta, so the effective
   // value must be the negative of the measurement: positive measurements flip.

@@ -10,9 +10,9 @@ static pros::Distance back_d(1), right_d(2), front_d(3);
 
 static void reset() {
   ez::dsr::sensors_clear();
-  back_d.mm = 9999; back_d.confidence = 63;
-  right_d.mm = 9999; right_d.confidence = 63;
-  front_d.mm = 9999; front_d.confidence = 63;
+  back_d.mm = 9999; back_d.confidence = 63; back_d.mm_seq.clear();
+  right_d.mm = 9999; right_d.confidence = 63; right_d.mm_seq.clear();
+  front_d.mm = 9999; front_d.confidence = 63; front_d.mm_seq.clear();
 }
 
 static bool close_to(double a, double b, double tol = 0.15) { return std::fabs(a - b) < tol; }
@@ -100,6 +100,16 @@ int main() {
   assert(close_to(ez::dsr::align_heading(10, 10, 42.0), 42.0, 0.001));
   passed++;
 
-  printf("dsr: %d/9 tests passed\n", passed);
+  // one wild sample in the stream is ignored by the median
+  reset();
+  ez::dsr::sensor_add(&back_d, Side::BACK, 7.0);
+  int good = (int)((30.0 - 7.0) * 25.4);
+  back_d.mm_seq = {good, good, 9999, good, good};  // spike in the middle
+  x = 50; y = 33;
+  assert(ez::dsr::correct(0.0, x, y));
+  assert(close_to(y, 30.0));
+  passed++;
+
+  printf("dsr: %d/10 tests passed\n", passed);
   return 0;
 }

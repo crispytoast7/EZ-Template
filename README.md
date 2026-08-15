@@ -37,7 +37,13 @@ tuner.tune_swing(90.0, 60);
 tuner.save_to_sd();
 ```
 
+or use the controller menu and pick what to tune at run time — `tuner.interactive(master, &horiz_tracker)` — LEFT/RIGHT selects (drive / turn / swing / heading / everything / tracker offset), A runs it, B saves and exits.
+
+none of the modules bind any controller buttons on their own; the interactive tuner and the imu wizard only read buttons inside the function you chose to call.
+
 ### json autons (`EZ-Template/json_auton.hpp`)
+
+> heads up: this module is nowhere near done. the format and executor are still changing a lot — don't build anything on it yet.
 
 runs autons from a json file on the sd card (`/usd/autons.json`) — each one shows up in the auton selector by name. supports smooth pure-pursuit runs, boomerang arrival headings, reverse, per-point speed/waits, and a built-in `dsr` action that squares up to the nearest wall and resets the pose. other actions go to a handler you set:
 

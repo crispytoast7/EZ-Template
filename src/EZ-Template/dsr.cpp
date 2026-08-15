@@ -1,5 +1,7 @@
 #include "EZ-Template/dsr.hpp"
 
+#include "pros/rtos.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <vector>
@@ -44,8 +46,17 @@ double wrap180(double a) {
 }
 
 bool correct_from(const SensorInfo& s, double field_heading_deg, double& x, double& y) {
-  int mm = s.device->get();
-  int conf = s.device->get_confidence();
+  // median of 5 samples over ~80 ms so a single noisy frame can't skew the reset
+  int mms[5], confs[5];
+  for (int i = 0; i < 5; i++) {
+    mms[i] = s.device->get();
+    confs[i] = s.device->get_confidence();
+    if (i < 4) pros::delay(20);
+  }
+  std::sort(mms, mms + 5);
+  std::sort(confs, confs + 5);
+  int mm = mms[2];
+  int conf = confs[2];
 
   if (mm < g_tuning.min_mm || mm > g_tuning.max_mm) {
     printf("[dsr] %s: skipped, reading %d mm out of trusted range\n", side_name(s.side), mm);

@@ -35,6 +35,15 @@ void tracker_offset_apply(ez::tracking_wheel& tracker, double measured);
 /// same file. Loaded automatically by pid_constants_load.
 bool tracker_offset_save(double measured, const char* path = "/usd/pid_constants.txt");
 
+/// Measures a horizontal tracking wheel's distance-to-center by spinning in
+/// place: during pure rotation the wheel rolls offset * angle, so the offset
+/// is rolled distance / radians turned, averaged over `iterations` full
+/// turns. Returns the signed offset for tracker_offset_apply and
+/// tracker_offset_save, or NAN if no turn completed. Needs ~2 ft of clear
+/// space around the robot.
+double tracker_offset_measure(ez::Drive& chassis, ez::tracking_wheel& tracker,
+                              int iterations = 5, int turn_speed = 90);
+
 /// Interactive IMU scale calibration. Prompts on the controller: rotate the
 /// robot by hand exactly `turns` full rotations against a straight edge, then
 /// press A (B cancels). Computes expected/reported, applies
@@ -78,6 +87,13 @@ class PIDAutoTuner {
   void runway_set(double inches);
 
   bool save_to_sd(const char* path = "/usd/pid_constants.txt");
+
+  /// Controller-driven tuning menu, so one selector entry can tune anything.
+  /// LEFT/RIGHT pick an item (drive, turn, swing, heading, tracker offset,
+  /// everything), A runs it, B saves to the SD card and exits. Pass the
+  /// horizontal tracking wheel to enable the offset item.
+  void interactive(pros::Controller& controller,
+                   ez::tracking_wheel* horiz_tracker = nullptr);
 
  private:
   ez::Drive& chassis;
