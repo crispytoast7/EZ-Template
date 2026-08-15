@@ -70,11 +70,11 @@ ez::json_register_selector(chassis);  // in initialize()
 
 at 90/270 the screen goes portrait, which llemu's fixed layout can't fit — so the selector rebuilds as a portrait copy of the llemu screen: same colors, font, and three-button bar, but long lines wrap instead of clipping and the buttons forward to llemu's real ones, so registered callbacks behave identically. 0/180 keep stock llemu untouched.
 
-on this branch the portrait screen is ported to lvgl 9 (what kernel 4.2.2 vendors) and is compile-verified only — the emulator can't run this kernel at all (it stalls or crashes inside lvgl on the pristine branch too), so unlike the 4.1.1 branch, portrait has never actually rendered here. treat it as untested until it's on a real brain.
+on this branch the portrait screen is ported to lvgl 9 (what kernel 4.2.2 vendors) and now renders in the emulator: the portrait column, llemu theme, and line wrapping all work — BUT the panel pixels don't actually rotate. lvgl 9 moved rotation out of the core and into the display driver, and pros 4.2.2's driver doesn't implement it, so the portrait layout draws unrotated on the left of the landscape screen. rotation on this branch needs driver-side work before it's usable; 0 deg (stock llemu) renders perfectly.
 
 ## what's left to test on a robot
 
-testing this branch comes after `462-additions`. nothing here has run on real hardware yet — but the big 4.2.x mystery is solved: the frozen-black-screen that upstream hit on real robots ([ez-template pr #309](https://github.com/EZ-Robotics/EZ-Template/pull/309)) was pros kernel 4.2.2 dropping the `.stack` section from its linker script, so the boot stack tramples the last globals in bss — which then cascaded into ez writing through a null FILE* when fopen fails. both are fixed on this branch (gdb-verified in the emulator: abort gone, full pros banner prints). stock vex-v5-qemu can't run this kernel without local patches to its shim spinlocks, and one later boot hang is still being chased there.
+testing this branch comes after `462-additions`. nothing here has run on real hardware yet — but the big 4.2.x mystery is solved: the frozen-black-screen that upstream hit on real robots ([ez-template pr #309](https://github.com/EZ-Robotics/EZ-Template/pull/309)) was pros kernel 4.2.2 dropping the `.stack` section from its linker script, so the boot stack tramples the last globals in bss — which then cascaded into ez writing through a null FILE* when fopen fails. both are fixed on this branch (gdb-verified in the emulator: abort gone, full pros banner prints). stock vex-v5-qemu can't run this kernel without local patches to its shim (three so far: two spinlock deadlocks and a fragile pipe write) — with those, this branch now boots all the way into opcontrol in the emulator.
 
 - [ ] builds boot on a real brain with kernel 4.2.2 (the hard-float fix is the whole point of this branch)
 - [ ] lemlib hardware 0.5.0 devices respond + health checks see them
@@ -85,7 +85,7 @@ testing this branch comes after `462-additions`. nothing here has run on real ha
 - [ ] imu scale wizard lands near 1.0 and persists — run it BEFORE the tracker offsets, the offset math trusts the imu
 - [ ] tracker offset spin test on every installed tracker (vertical AND horizontal): each matches a tape measure (sign/flip included), odom stops drifting sideways
 - [ ] dsr with real sensors: noise/confidence, off-square + blocked-view rejection, corrected pose matches tape measure on all four sides
-- [ ] screen rotation on a rotated brain, portrait selector at 90/270 included (lvgl 9 port is compile-verified only — it has never rendered anywhere)
+- [ ] screen rotation: BLOCKED on this branch — lvgl 9 needs driver-side rotation that pros 4.2.2 does not implement (portrait layout itself renders fine in the emulator, just unrotated)
 - [ ] brain pid tuner (X) while portrait rotation is active — known untested interaction, may draw llemu widgets onto the portrait screen
 - [ ] boot with NO sd card: tuner save fails gracefully, constants fall back to whatever's in code
 - [ ] on a comp switch: pid tuner + run-auton-on-DOWN+B stay disabled, selector still pages, selected auton fires in auton mode
