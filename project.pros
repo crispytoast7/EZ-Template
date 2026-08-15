@@ -4,6 +4,31 @@
         "project_name": "EZ-Template",
         "target": "v5",
         "templates": {
+            "hardware": {
+                "location": "/Users/austin-futoran/Library/Application Support/PROS/templates/hardware@0.5.0",
+                "metadata": {
+                    "origin": "local"
+                },
+                "name": "hardware",
+                "py/object": "pros.conductor.templates.local_template.LocalTemplate",
+                "supported_kernels": "^4.2.2",
+                "system_files": [
+                    "include/hardware/IMU/V5InertialSensor.hpp",
+                    "include/hardware/Device.hpp",
+                    "include/hardware/Motor/MotorGroup.hpp",
+                    "include/hardware/Motor/Motor.hpp",
+                    "include/hardware/util.hpp",
+                    "include/hardware/Encoder/V5RotationSensor.hpp",
+                    "include/hardware/Encoder/ADIEncoder.hpp",
+                    "include/hardware/Encoder/Encoder.hpp",
+                    "include/hardware/Port.hpp",
+                    "include/hardware/IMU/IMU.hpp",
+                    "firmware/hardware.a"
+                ],
+                "target": "v5",
+                "user_files": [],
+                "version": "0.5.0"
+            },
             "kernel": {
                 "location": "/Users/austin-futoran/Library/Application Support/PROS/templates/kernel@4.2.2",
                 "metadata": {
@@ -731,6 +756,26 @@
                 "target": "v5",
                 "user_files": [],
                 "version": "5.0.0"
+            },
+            "units": {
+                "py/object": "pros.conductor.templates.external_template.ExternalTemplate",
+                "py/state": {
+                    "metadata": {},
+                    "name": "units",
+                    "supported_kernels": "^4.2.1",
+                    "system_files": [
+                        "include/units/Vector3D.hpp",
+                        "include/units/Temperature.hpp",
+                        "include/units/Pose.hpp",
+                        "include/units/Vector2D.hpp",
+                        "include/units/Angle.hpp",
+                        "firmware/units.a",
+                        "include/units/units.hpp"
+                    ],
+                    "target": "v5",
+                    "user_files": [],
+                    "version": "0.7.3"
+                }
             }
         },
         "upload_options": {

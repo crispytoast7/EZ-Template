@@ -3,9 +3,21 @@
 #include "EZ-Template/dsr.hpp"
 #include "pros/error.h"
 #include <cstdio>
+#include <utility>
+#include <vector>
 
 namespace ez {
 namespace health {
+
+#ifdef EZ_HEALTH_LEMLIB_HARDWARE
+namespace {
+std::vector<std::pair<lemlib::Device*, const char*>> g_lemlib_devices;
+}
+
+void device_add(lemlib::Device* device, const char* name) {
+  g_lemlib_devices.push_back({device, name});
+}
+#endif
 
 Report preflight(ez::Drive& chassis, pros::Controller& controller) {
   Report r;
@@ -44,6 +56,15 @@ Report preflight(ez::Drive& chassis, pros::Controller& controller) {
       printf("[health] DSR sensor on port %d not responding\n", s.device->get_port());
     }
   }
+
+#ifdef EZ_HEALTH_LEMLIB_HARDWARE
+  for (auto& [dev, name] : g_lemlib_devices) {
+    if (!dev->isConnected()) {
+      r.lemlib_bad++;
+      printf("[health] Device \"%s\" not connected\n", name);
+    }
+  }
+#endif
 
   if (!r.all_ok()) {
     controller.rumble("---");
