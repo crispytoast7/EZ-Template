@@ -1,7 +1,5 @@
 # EZ-Template — 462 fork
 
-> **status: main branch, on pros kernel 4.2.2.** boots fully in an emulator (with the black-screen kernel bugs fixed here); real-robot testing happens when i'm back at school. treat every feature as unverified on hardware until then.
-
 fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) with extra modules for my team. everything below is what's different from stock EZ — for everything else see the [EZ docs](https://ez-robotics.github.io/EZ-Template/).
 
 ## branches
