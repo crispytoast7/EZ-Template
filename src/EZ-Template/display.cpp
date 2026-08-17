@@ -7,6 +7,13 @@
 #include "liblvgl/lvgl.h"
 #include "pros/llemu.hpp"
 
+#if LVGL_VERSION_MAJOR >= 9
+// For lv_display_t::flush_cb and buf_1: LVGL 9 has no getter for the installed
+// flush callback, and the rotation wrapper below needs to save the kernel's.
+#include "liblvgl/display/lv_display_private.h"
+#include "liblvgl/draw/sw/lv_draw_sw.h"
+#endif
+
 namespace ez {
 
 namespace {
@@ -181,6 +188,47 @@ void portrait_unload() {
 }
 
 void portrait_line_set(int line, const char* text) { lv_label_set_text(g_portrait_lines[line], text); }
+
+// LVGL 9 dropped core software rotation: lv_display_set_rotation only re-lays
+// out widgets, and rotating the pixels became the flush driver's job. The
+// kernel's driver (lvgl_display_flush in liblvgl's display.c) just copies
+// px_map to the panel at the area's own coordinates, so a rotated screen
+// renders correctly but displays unrotated. This wrapper slots in front of it:
+// each flushed band is software-rotated into physical orientation and its area
+// remapped from logical to panel coordinates before the kernel's flush runs.
+// Pointer input needs no counterpart; lv_indev.c already rotates touch points
+// off the display's rotation.
+lv_display_flush_cb_t g_flush_orig = nullptr;
+uint8_t* g_flush_rotated = nullptr;
+
+void flush_rotated_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
+  lv_display_rotation_t rot = lv_display_get_rotation(disp);
+  if (rot == LV_DISPLAY_ROTATION_0) {
+    g_flush_orig(disp, area, px_map);
+    return;
+  }
+
+  int32_t w = lv_area_get_width(area);
+  int32_t h = lv_area_get_height(area);
+  lv_color_format_t cf = lv_display_get_color_format(disp);
+  int32_t px_size = lv_color_format_get_size(cf);
+  // 90 and 270 land the band on its side, so the destination rows are h wide.
+  int32_t dest_w = rot == LV_DISPLAY_ROTATION_180 ? w : h;
+  lv_draw_sw_rotate(px_map, g_flush_rotated, w, h, w * px_size, dest_w * px_size, rot, cf);
+
+  lv_area_t rotated = *area;
+  lv_display_rotate_area(disp, &rotated);
+  g_flush_orig(disp, &rotated, g_flush_rotated);
+}
+
+void flush_wrapper_install(lv_display_t* disp) {
+  if (g_flush_orig != nullptr) return;
+  // A rotated band holds exactly as many pixels as the flushed one, so the
+  // draw buffer's own size is the worst case.
+  g_flush_rotated = new uint8_t[disp->buf_1->data_size];
+  g_flush_orig = disp->flush_cb;
+  lv_display_set_flush_cb(disp, flush_rotated_cb);
+}
 }  // namespace
 
 void screen_rotation_set(int degrees) {
@@ -200,6 +248,10 @@ void screen_rotation_set(int degrees) {
     printf("[display] No LVGL display yet; initialize the screen first.\n");
     return;
   }
+  // Installed before the rotation takes effect so no rotated band is ever
+  // flushed through the kernel's unrotated path. At 0 it passes through, so
+  // it is left in place once installed.
+  if (rot != LV_DISPLAY_ROTATION_0) flush_wrapper_install(disp);
   lv_display_set_rotation(disp, rot);
   g_rotation = degrees;
 
