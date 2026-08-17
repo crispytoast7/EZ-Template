@@ -94,6 +94,6 @@ nothing here has run on real hardware yet — but the big 4.2.x mystery is solve
 ## branches
 
 - `main` — this. all the custom features on pros kernel 4.2.2, plus lemlib hardware 0.5.0 + units hooked into health checks.
-- `blank-4.2.2` — stock ez-template on kernel 4.2.2 with only the boot fixes. features get added here gradually.
+- `pros-4.2.2-enhancements` — stock ez-template on kernel 4.2.2 with only the boot fixes. features get added here gradually.
 - `pros-4.2.2-fixes` — the upstream pr payload (kernel bump + the three boot fixes). frozen.
 - the old kernel-4.1.1 branch (hardware-confirmed boot + rotation) is preserved at the `archive/462-additions` tag.
