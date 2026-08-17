@@ -76,6 +76,7 @@ verified in the emulator at all four rotations, touch included. still unverified
 
 the image boots in the emulator, but everything physical still needs a real robot:
 
+- [x] boots and runs on a real brain (kernel 4.1.1 — confirmed by a teammate, aug 2026)
 - [ ] health preflight catches dead motors/sensors and passes when everything's plugged in (test it lying too: unplug one motor + one sensor and check it names them with the right ports)
 - [ ] auto tuner end to end: relay test oscillates, constants usable at 12/24/48 in and 45/90/135 deg, runway abort actually cuts motors before the field edge, temp wait resumes after cooling, sd save + reload on boot
 - [ ] heading hold, both paths: derived-from-drive (what "everything" gives you) drives straight without jitter; tune_heading relay version if you want it tighter
@@ -83,7 +84,8 @@ the image boots in the emulator, but everything physical still needs a real robo
 - [ ] imu scale wizard lands near 1.0 and persists — run it BEFORE the tracker offsets, the offset math trusts the imu
 - [ ] tracker offset spin test on every installed tracker (vertical AND horizontal): each matches a tape measure (sign/flip included), odom stops drifting sideways
 - [ ] dsr with real sensors: noise/confidence, off-square + blocked-view rejection, corrected pose matches tape measure on all four sides
-- [ ] screen rotation on a real brain (all 4 rotations + touch already verified in the emulator, portrait selector included)
+- [x] screen rotation renders on a real brain (confirmed by a teammate, aug 2026)
+- [ ] rotation follow-ups: which rotations were run (portrait 90/270 included?), and touch still lands on the buttons
 - [ ] brain pid tuner (X) while portrait rotation is active — known untested interaction, may draw llemu widgets onto the portrait screen
 - [ ] boot with NO sd card: tuner save fails gracefully, constants fall back to whatever's in code
 - [ ] on a comp switch: pid tuner + run-auton-on-DOWN+B stay disabled, selector still pages, selected auton fires in auton mode
