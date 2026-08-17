@@ -11,7 +11,7 @@ fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) with extra mod
 | `main` | all the custom features below, on kernel 4.2.2, plus lemlib hardware 0.5.0 + units | emulator-verified, no hardware yet |
 | `pros-4.2.2-enhancements` | stock ez-template on kernel 4.2.2 + the boot fixes, features added one at a time (see [its section](#whats-on-pros-422-enhancements)) | emulator-verified per feature |
 | `pros-4.2.2-fixes` | just the kernel bump + the three boot fixes, sitting on upstream's `feature/pros-4.2.1` — the payload for the upstream pr. frozen | pr open |
-| `462-additions-OLD` / tag `archive/462-additions` | the old kernel-4.1.1 line. only branch with hardware confirmations (boot + screen rotation) | archived |
+| `462-additions-OLD` / tag `archive/462-additions` | the old kernel-4.1.1 line | archived |
 | `pros-4.2.2-OLD` | pre-merge snapshot of main | archived |
 
 emulator note: kernel 4.2.2 only runs in [vex-v5-qemu](https://github.com/vexide/vex-v5-qemu) with the shim fixes on [my fork's `fix/pros-422-boot-robustness` branch](https://github.com/crispytoast7/vex-v5-qemu) (two spinlock deadlocks + a fragile pipe write).
