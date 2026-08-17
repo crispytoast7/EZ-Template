@@ -14,8 +14,6 @@ fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) with extra mod
 | `462-additions-OLD` / tag `archive/462-additions` | the old kernel-4.1.1 line | archived |
 | `pros-4.2.2-OLD` | pre-merge snapshot of main | archived |
 
-emulator note: kernel 4.2.2 only runs in [vex-v5-qemu](https://github.com/vexide/vex-v5-qemu) with the shim fixes on [my fork's `fix/pros-422-boot-robustness` branch](https://github.com/crispytoast7/vex-v5-qemu) (two spinlock deadlocks + a fragile pipe write).
-
 ## the 4.2.2 black screen, solved
 
 the frozen-black-screen everyone hit on pros 4.2.x on real robots ([ez-template pr #309](https://github.com/EZ-Robotics/EZ-Template/pull/309)) was two stacked bugs, found with gdb against the emulator:
@@ -126,21 +124,3 @@ stock ez-template + kernel 4.2.2, growing one verified feature at a time. stock 
 3. **health checks** — like main's but leaner: no dsr slice, and instead of the lemlib registry it takes ANY pros smart device — `ez::health::device_add(&intake, "intake")` covers motors off the drive and standalone sensors, and a wrong device in the right port reads as dead too
 4. **imu scale wizard** — standalone (no tuner): `ez::imu_scale_load(chassis)` in initialize restores the saved scaler, `ez::imu_wizard_register(chassis)` adds "IMU Scale Wizard" to the auton selector — run it like any auton and follow the controller prompts
 
-## what's left to test on a robot
-
-nothing here has run on real hardware yet (the old 4.1.1 branch had boot + rotation confirmed; kernel 4.2.2 resets that clock):
-
-- [ ] boots and runs on a real brain with kernel 4.2.2
-- [ ] lemlib hardware devices respond + health checks see them
-- [ ] health preflight catches dead motors/sensors and passes when everything's plugged in (test it lying too: unplug one motor + one sensor and check it names them with the right ports)
-- [ ] auto tuner end to end: relay test oscillates, constants usable at 12/24/48 in and 45/90/135 deg, runway abort actually cuts motors before the field edge, temp wait resumes after cooling, sd save + reload on boot
-- [ ] heading hold, both paths: derived-from-drive (what "everything" gives you) drives straight without jitter; tune_heading relay version if you want it tighter
-- [ ] interactive tuner menu buttons feel right + don't fight the stock pid tuner on X
-- [ ] imu scale wizard lands near 1.0 and persists — run it BEFORE the tracker offsets, the offset math trusts the imu
-- [ ] tracker offset spin test on every installed tracker (vertical AND horizontal): each matches a tape measure (sign/flip included), odom stops drifting sideways
-- [ ] dsr with real sensors: noise/confidence, off-square + blocked-view rejection, corrected pose matches tape measure on all four sides
-- [ ] screen rotation on a real brain: all 4 rotations + touch (already verified in the emulator, portrait selector included)
-- [ ] brain pid tuner (X) while portrait rotation is active — known untested interaction, may draw llemu widgets onto the portrait screen
-- [ ] boot with NO sd card: tuner save fails gracefully, constants fall back to whatever's in code
-- [ ] on a comp switch: pid tuner + run-auton-on-DOWN+B stay disabled, selector still pages, selected auton fires in auton mode
-- [ ] json autons smoke test: file loads, selector shows names, one path + dsr action runs
