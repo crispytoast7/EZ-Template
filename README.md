@@ -1,6 +1,6 @@
 # EZ-Template — 462 fork
 
-> **status: this branch gets tested later.** `462-additions` is the priority when i'm back at school in a few weeks; this experimental kernel-4.2.2 branch gets tested after that. treat every feature as unverified until then.
+> **status: main branch, on pros kernel 4.2.2.** boots fully in an emulator (with the black-screen kernel bugs fixed here); real-robot testing happens when i'm back at school in a few weeks. treat every feature as unverified on hardware until then.
 
 fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) v3.2.2 with extra modules for my team. everything below is what's different from stock EZ — for everything else see the [EZ docs](https://ez-robotics.github.io/EZ-Template/).
 
@@ -70,11 +70,11 @@ ez::json_register_selector(chassis);  // in initialize()
 
 at 90/270 the screen goes portrait, which llemu's fixed layout can't fit — so the selector rebuilds as a portrait copy of the llemu screen: same colors, font, and three-button bar, but long lines wrap instead of clipping and the buttons forward to llemu's real ones, so registered callbacks behave identically. 0/180 keep stock llemu untouched.
 
-on this branch the portrait screen is ported to lvgl 9 (what kernel 4.2.2 vendors) and now renders in the emulator: the portrait column, llemu theme, and line wrapping all work — BUT the panel pixels don't actually rotate. lvgl 9 moved rotation out of the core and into the display driver, and pros 4.2.2's driver doesn't implement it, so the portrait layout draws unrotated on the left of the landscape screen. rotation on this branch needs driver-side work before it's usable; 0 deg (stock llemu) renders perfectly.
+lvgl 9 (what kernel 4.2.2 vendors) dropped built-in software rotation, so this branch does it in the display flush path: each flushed band gets software-rotated and remapped to panel coordinates before it reaches the screen. verified in the emulator at all four rotations (portrait selector included), with 0 deg pixel-identical to stock. touch is transformed by lvgl itself, so pixels and touch stay consistent.
 
 ## what's left to test on a robot
 
-testing this branch comes after `462-additions`. nothing here has run on real hardware yet — but the big 4.2.x mystery is solved: the frozen-black-screen that upstream hit on real robots ([ez-template pr #309](https://github.com/EZ-Robotics/EZ-Template/pull/309)) was pros kernel 4.2.2 dropping the `.stack` section from its linker script, so the boot stack tramples the last globals in bss — which then cascaded into ez writing through a null FILE* when fopen fails. both are fixed on this branch (gdb-verified in the emulator: abort gone, full pros banner prints). stock vex-v5-qemu can't run this kernel without local patches to its shim (three so far: two spinlock deadlocks and a fragile pipe write) — with those, this branch now boots all the way into opcontrol in the emulator.
+nothing here has run on real hardware yet — but the big 4.2.x mystery is solved: the frozen-black-screen that upstream hit on real robots ([ez-template pr #309](https://github.com/EZ-Robotics/EZ-Template/pull/309)) was pros kernel 4.2.2 dropping the `.stack` section from its linker script, so the boot stack tramples the last globals in bss — which then cascaded into ez writing through a null FILE* when fopen fails. both are fixed on this branch (gdb-verified in the emulator: abort gone, full pros banner prints). stock vex-v5-qemu can't run this kernel without local patches to its shim (three so far: two spinlock deadlocks and a fragile pipe write) — with those, this branch now boots all the way into opcontrol in the emulator.
 
 - [ ] builds boot on a real brain with kernel 4.2.2 (the hard-float fix is the whole point of this branch)
 - [ ] lemlib hardware 0.5.0 devices respond + health checks see them
@@ -85,7 +85,7 @@ testing this branch comes after `462-additions`. nothing here has run on real ha
 - [ ] imu scale wizard lands near 1.0 and persists — run it BEFORE the tracker offsets, the offset math trusts the imu
 - [ ] tracker offset spin test on every installed tracker (vertical AND horizontal): each matches a tape measure (sign/flip included), odom stops drifting sideways
 - [ ] dsr with real sensors: noise/confidence, off-square + blocked-view rejection, corrected pose matches tape measure on all four sides
-- [ ] screen rotation: BLOCKED on this branch — lvgl 9 needs driver-side rotation that pros 4.2.2 does not implement (portrait layout itself renders fine in the emulator, just unrotated)
+- [ ] screen rotation on a real brain: all 4 rotations + touch (already verified in the emulator, portrait selector included)
 - [ ] brain pid tuner (X) while portrait rotation is active — known untested interaction, may draw llemu widgets onto the portrait screen
 - [ ] boot with NO sd card: tuner save fails gracefully, constants fall back to whatever's in code
 - [ ] on a comp switch: pid tuner + run-auton-on-DOWN+B stay disabled, selector still pages, selected auton fires in auton mode
@@ -93,5 +93,7 @@ testing this branch comes after `462-additions`. nothing here has run on real ha
 
 ## branches
 
-- `462-additions` — pros kernel 4.1.1 (stable). tested first.
-- `pros-4.2.2` — this. experimental: eventually will build on kernel 4.2.2 and add lemlib hardware 0.5.0 + units, hooked into health checks. tested after `462-additions`.
+- `main` — this. all the custom features on pros kernel 4.2.2, plus lemlib hardware 0.5.0 + units hooked into health checks.
+- `blank-4.2.2` — stock ez-template on kernel 4.2.2 with only the boot fixes. features get added here gradually.
+- `pros-4.2.2-fixes` — the upstream pr payload (kernel bump + the three boot fixes). frozen.
+- the old kernel-4.1.1 branch (hardware-confirmed boot + rotation) is preserved at the `archive/462-additions` tag.
