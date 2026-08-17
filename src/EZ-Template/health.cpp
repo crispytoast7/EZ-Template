@@ -15,7 +15,8 @@ std::vector<std::pair<lemlib::Device*, const char*>> g_lemlib_devices;
 }
 
 void device_add(lemlib::Device* device, const char* name) {
-  g_lemlib_devices.push_back({device, name});
+  if (device == nullptr) return;
+  g_lemlib_devices.push_back({device, name != nullptr ? name : "unnamed device"});
 }
 #endif
 
@@ -59,7 +60,8 @@ Report preflight(ez::Drive& chassis, pros::Controller& controller) {
 
 #ifdef EZ_HEALTH_LEMLIB_HARDWARE
   for (auto& [dev, name] : g_lemlib_devices) {
-    if (!dev->isConnected()) {
+    // isConnected() is 1 when connected, 0 when not, and INT_MAX when the check itself failed
+    if (dev->isConnected() != 1) {
       r.lemlib_bad++;
       printf("[health] Device \"%s\" not connected\n", name);
     }
@@ -68,8 +70,8 @@ Report preflight(ez::Drive& chassis, pros::Controller& controller) {
 
   if (!r.all_ok()) {
     controller.rumble("---");
-    printf("[health] PREFLIGHT FAILED: imu %s, %d motor(s), %d tracker(s), %d distance sensor(s)\n",
-           r.imu_ok ? "ok" : "BAD", r.motors_bad, r.trackers_bad, r.distance_bad);
+    printf("[health] PREFLIGHT FAILED: imu %s, %d motor(s), %d tracker(s), %d distance sensor(s), %d device(s)\n",
+           r.imu_ok ? "ok" : "BAD", r.motors_bad, r.trackers_bad, r.distance_bad, r.lemlib_bad);
   } else {
     printf("[health] Preflight OK.\n");
   }
