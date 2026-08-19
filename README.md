@@ -120,5 +120,4 @@ stock ez-template + kernel 4.2.2, growing one verified feature at a time. stock 
 1. **boot fixes** — the `.stack` linker restore, null-checked sd writes, screen prints guarded until llemu exists
 2. **screen rotation** — same as main's (portrait selector, all four angles, touch)
 3. **health checks** — like main's but leaner: no dsr slice, and instead of the lemlib registry it takes ANY pros smart device — `ez::health::device_add(&intake, "intake")` covers motors off the drive and standalone sensors, and a wrong device in the right port reads as dead too
-4. **imu scale wizard** — standalone (no tuner): `ez::imu_scale_load(chassis)` in initialize restores the saved scaler, `ez::imu_wizard_register(chassis)` adds "IMU Scale Wizard" to the auton selector — run it like any auton and follow the controller prompts
 
