@@ -32,6 +32,14 @@ enum class tracker_slot { LEFT, RIGHT, BACK, FRONT };
 bool pid_constants_load(ez::Drive& chassis,
                         const char* path = "/usd/pid_constants.txt");
 
+namespace internal {
+/// Read-modify-write of one labeled line in the SD constants file: every other
+/// line survives untouched. Shared with the drive profile module so both write
+/// the same file the same way.
+bool sd_line_save(const char* label, double value,
+                  const char* path = "/usd/pid_constants.txt");
+}  // namespace internal
+
 /// Applies a measured tracker offset to the wheel in `slot`. `measured` is the
 /// signed rolled-distance / radians-turned value from a spin test; the sign is
 /// translated into EZ-Template's magnitude-plus-flip convention.

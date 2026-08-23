@@ -63,6 +63,26 @@ ez::imu_scale_measure(chassis, master);  // spin the robot 10 turns by hand vs a
 
 applies the scaler immediately and saves it to the sd card; restored every boot by `pid_constants_load`.
 
+### drive characterization + profile (`EZ-Template/drive_profile.hpp`)
+
+measures what your drive actually does with a command, then corrects for it. put the robot on a stand, run "Drive Characterize" from the auton selector, and each side gets stepped on its own through ten command levels — hold, wait for the velocity to settle, record motor rpm and battery. out of that come two numbers per side: `kS`, the command where the wheels start turning, and `kV`, command per rpm.
+
+```cpp
+ez::drive_characterize_register(chassis);  // in initialize(), after your autons_add()
+ez::pid_constants_load(chassis);           // restores the profile with everything else
+```
+
+the correction is OFF until you ask for it, and it happens at the one place ez writes drive power, so autons, opcontrol and the tuner all get it:
+
+```cpp
+ez::drive_profile_enable(true);          // deadband skip + side balance
+ez::drive_profile_battery_enable(true);  // and normalize to 12.5 V (separate opt-in)
+```
+
+deadband skip remaps every command into `[kS, 127]`, so a pid output of 3 actually creeps instead of buzzing. side balance scales the faster side down by the kv ratio, so "straight" is straight before the heading pid has to fix it. **turning this on changes the plant — re-tune your pid constants after.**
+
+saved under `dp-ls` / `dp-lv` / `dp-rs` / `dp-rv` in the same `/usd/pid_constants.txt` everything else uses.
+
 ### dsr — distance sensor wall resets (`EZ-Template/dsr.hpp`)
 
 uses the field walls as a ruler to fix odom drift. register a distance sensor per side with its offset from robot center; `correct()` figures out which wall each sensor faces and overwrites that axis of the pose. bad readings get rejected (low confidence, out of range, more than 15 deg off square, or an implied jump over 18 in — something in the way).

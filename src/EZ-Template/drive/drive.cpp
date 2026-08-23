@@ -227,6 +227,11 @@ double Drive::drive_rpm_get() { return CARTRIDGE; }
 void Drive::private_drive_set(int left, int right) {
   if (pros::millis() < 1500) return;
 
+  // Every drive command in EZ funnels through here, so this is the one place
+  // the drive profile has to correct.  It returns without touching anything
+  // unless compensation is enabled AND a profile is loaded.
+  drive_profile_transform(left, right);
+
   for (auto i : left_motors) {
     if (!pto_check(i)) i.move_voltage(left * (12000.0 / 127.0));  // If the motor is in the pto list, don't do anything to the motor.
   }

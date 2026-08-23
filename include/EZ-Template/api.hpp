@@ -10,6 +10,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "EZ-Template/auton.hpp"
 #include "EZ-Template/auton_selector.hpp"
 #include "EZ-Template/drive/drive.hpp"
+#include "EZ-Template/drive_profile.hpp"
 #include "EZ-Template/display.hpp"
 #include "EZ-Template/dsr.hpp"
 #include "EZ-Template/health.hpp"

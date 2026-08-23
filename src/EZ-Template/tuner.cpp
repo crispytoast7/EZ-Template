@@ -1,5 +1,6 @@
 #include "EZ-Template/tuner.hpp"
 
+#include "EZ-Template/drive_profile.hpp"
 #include "pros/rtos.hpp"
 #include <cmath>
 #include <cstdio>
@@ -639,7 +640,8 @@ void tracker_offset_apply(ez::tracking_wheel& tracker, double measured, tracker_
 
 // Read-modify-write of one labeled line so other lines in the file survive.
 // Zero padding keeps the loader's label-plus-3-numbers format.
-static bool sd_line_save(const char* label, double value, const char* path) {
+namespace internal {
+bool sd_line_save(const char* label, double value, const char* path) {
   std::string kept;
   FILE* f = fopen(path, "r");
   if (f) {
@@ -662,9 +664,10 @@ static bool sd_line_save(const char* label, double value, const char* path) {
   printf("[tuner] %s saved to %s\n", label, path);
   return true;
 }
+}  // namespace internal
 
 bool tracker_offset_save(tracker_slot slot, double measured, const char* path) {
-  return sd_line_save(slot_label(slot), measured, path);
+  return internal::sd_line_save(slot_label(slot), measured, path);
 }
 
 double imu_scale_measure(ez::Drive& chassis, pros::Controller& controller,
@@ -696,7 +699,7 @@ double imu_scale_measure(ez::Drive& chassis, pros::Controller& controller,
 
   double scaler = expected / reported;
   chassis.drive_imu_scaler_set(scaler);
-  sd_line_save("imuscale", scaler, path);
+  internal::sd_line_save("imuscale", scaler, path);
   printf("[tuner] IMU reported %.1f deg over %.0f actual; scaler = %.5f (applied).\n",
          reported, expected, scaler);
   printf("[tuner] Re-run the PID auto-tune so the tracker offset uses the new scale.\n");
@@ -745,6 +748,14 @@ bool pid_constants_load(ez::Drive& chassis, const char* path) {
         loaded = tracker_line_load(chassis.odom_tracker_front, kp, tracker_slot::FRONT);
     } else if (strcmp(label, "imuscale") == 0) {
       chassis.drive_imu_scaler_set(kp);
+    } else if (strcmp(label, "dp-ls") == 0) {
+      drive_profile().left.ks = kp;
+    } else if (strcmp(label, "dp-lv") == 0) {
+      drive_profile().left.kv = kp;
+    } else if (strcmp(label, "dp-rs") == 0) {
+      drive_profile().right.ks = kp;
+    } else if (strcmp(label, "dp-rv") == 0) {
+      drive_profile().right.kv = kp;
     } else {
       loaded = false;
     }
@@ -757,6 +768,8 @@ bool pid_constants_load(ez::Drive& chassis, const char* path) {
 
   fclose(f);
   if (loaded_any) printf("[tuner] PID constants loaded from %s\n", path);
+  if (drive_profile().valid())
+    printf("[tuner] Drive profile loaded; it does nothing until ez::drive_profile_enable(true).\n");
   return loaded_any;
 }
 
