@@ -1,42 +1,39 @@
 #pragma once
 
 #include "EZ-Template/drive/drive.hpp"
+#include "pros/device.hpp"
 #include "pros/misc.hpp"
-
-// Device.hpp is the only lemlib header EZ pulls in on purpose: it's the one that
-// doesn't include units, whose literals (`_in`, `_ft`, `_rpm`, ...) live in the
-// global namespace and would clash with the okapi literals EZ exposes.
-#if __has_include("hardware/Device.hpp")
-#define EZ_HEALTH_LEMLIB_HARDWARE 1
-#include "hardware/Device.hpp"
-#endif
 
 namespace ez {
 namespace health {
 
 struct Report {
   bool imu_ok = true;
-  int motors_bad = 0;        ///< drive motors not responding
-  int trackers_bad = 0;      ///< configured odom trackers not responding
-  int distance_bad = 0;      ///< registered DSR sensors not responding
-  int lemlib_bad = 0;        ///< registered lemlib devices not connected
+  int motors_bad = 0;    ///< drive motors not responding
+  int motors_hot = 0;    ///< drive motors hot enough to be losing power
+  int motors_warm = 0;   ///< drive motors warm but still at full power
+  int trackers_bad = 0;  ///< configured odom trackers not responding
+  int distance_bad = 0;  ///< registered DSR sensors not responding
+  int devices_bad = 0;   ///< registered devices not responding
+  /// Temperature is a warning rather than a failure, so motors_hot and
+  /// motors_warm deliberately do not count against this.
   bool all_ok() const {
     return imu_ok && motors_bad == 0 && trackers_bad == 0 && distance_bad == 0 &&
-           lemlib_bad == 0;
+           devices_bad == 0;
   }
 };
 
 /// Checks that the IMU, every drive motor, every configured odom tracker, every
-/// DSR sensor, and every registered lemlib device responds. Prints each failure
-/// with its port and rumbles the controller when anything is wrong. Safe to call
-/// from initialize() and again at the start of autonomous.
+/// DSR sensor, and every device registered with device_add() responds. Prints
+/// each failure with its port and rumbles the controller when anything is wrong.
+/// Safe to call from initialize() and again at the start of autonomous.
 Report preflight(ez::Drive& chassis, pros::Controller& controller);
 
-#ifdef EZ_HEALTH_LEMLIB_HARDWARE
-/// Registers a LemLib hardware device (Motor, MotorGroup, encoder, IMU, or
-/// anything implementing lemlib::Device) for inclusion in preflight checks.
-void device_add(lemlib::Device* device, const char* name);
-#endif
+/// Registers a smart device (a motor that isn't on the drive, a distance,
+/// rotation, or optical sensor, anything deriving from pros::Device) for
+/// inclusion in preflight checks. A null device is ignored, and a null name is
+/// reported as "unnamed device".
+void device_add(pros::Device* device, const char* name);
 
 }  // namespace health
 }  // namespace ez

@@ -6,7 +6,7 @@ fork of [EZ-Template](https://github.com/EZ-Robotics/EZ-Template) with extra mod
 
 | branch | what it is | status |
 |---|---|---|
-| `main` | all the custom features below, on kernel 4.2.2, plus lemlib hardware 0.5.0 + units | emulator-verified, no hardware yet |
+| `main` | all the custom features below, on kernel 4.2.2 | emulator-verified, no hardware yet |
 | `pros-4.2.2-enhancements` | stock ez-template on kernel 4.2.2 + the boot fixes, features added one at a time (see [its section](#whats-on-pros-422-enhancements)) | emulator-verified per feature |
 | `pros-4.2.2-fixes` | just the kernel bump + the three boot fixes, sitting on upstream's `feature/pros-4.2.1` — the payload for the upstream pr. frozen | pr open |
 | `462-additions-OLD` / tag `archive/462-additions` | the old kernel-4.1.1 line | archived |
@@ -106,7 +106,7 @@ if (ez::dsr::correct(chassis.drive_imu_get(), x, y)) {
 ez::health::preflight(chassis, master);  // end of initialize()
 ```
 
-pings the imu, every drive motor, odom trackers, and dsr sensors; prints each dead device with its port, rumbles the controller on failure, and returns — it reports, never blocks. run it after transport, battery swaps, and any time the robot acts weird: it turns "why isn't it moving" into a port number. lemlib devices can be registered with `ez::health::device_add(&dev, "name")`.
+pings the imu, every drive motor, odom trackers, and dsr sensors; prints each dead device with its port, rumbles the controller on failure, and returns — it reports, never blocks. run it after transport, battery swaps, and any time the robot acts weird: it turns "why isn't it moving" into a port number. anything else on the robot can join the check with `ez::health::device_add(&intake, "intake")` — any pros smart device, and a wrong device in the right port reads as dead too. drive motor temps come back as warnings rather than failures: warm at 45C, overheating at 55C where the v5 starts cutting power.
 
 ### screen rotation (`EZ-Template/display.hpp`)
 
@@ -129,15 +129,11 @@ ez::json_action_handler_set([](const std::string& a) {
 ez::json_register_selector(chassis);  // in initialize()
 ```
 
-### lemlib hardware 0.5.0 + units
-
-vendored for YOUR subsystem code (typed units, swappable encoder interface, clean connected/disconnected answers) — ez itself doesn't use it beyond the health registry. caveat: files that include lemlib motor headers can't also use okapi literals (`_in`, `_deg`, ...) — the suffixes collide; use plain doubles there.
-
 ## what's on `pros-4.2.2-enhancements`
 
 stock ez-template + kernel 4.2.2, growing one verified feature at a time. stock readme and example project stay stock over there — this list is the changelog:
 
 1. **boot fixes** — the `.stack` linker restore, null-checked sd writes, screen prints guarded until llemu exists
 2. **screen rotation** — same as main's (portrait selector, all four angles, touch)
-3. **health checks** — like main's but leaner: no dsr slice, and instead of the lemlib registry it takes ANY pros smart device — `ez::health::device_add(&intake, "intake")` covers motors off the drive and standalone sensors, and a wrong device in the right port reads as dead too
+3. **health checks** — like main's but leaner: no dsr slice, plus a `preflight_register(chassis)` that hangs the check off an auton selector page so it can be run from the brain
 
