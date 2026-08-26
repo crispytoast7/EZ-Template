@@ -120,7 +120,7 @@ int page_blank_amount() {
 
 void initialize() {
   // Initialize auto selector and LLEMU
-  pros::lcd::initialize();
+  ez::screen_lcd_initialize();
   ez::as::auton_selector_initialize();
 
   // Callbacks for auto selector

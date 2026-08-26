@@ -164,6 +164,8 @@ void repaint_schedule() {
   lv_timer_set_repeat_count(timer, 1);
 }
 
+pros::Mutex& line_mutex();
+
 void portrait_load() {
   if (g_portrait_screen == nullptr) portrait_create();
 
@@ -172,8 +174,12 @@ void portrait_load() {
     g_portrait_on = true;
   }
 
-  for (int i = 0; i < LINE_COUNT; i++)
-    lv_label_set_text(g_portrait_lines[i], g_line_text[i].c_str());
+  for (int i = 0; i < LINE_COUNT; i++) {
+    line_mutex().take();
+    std::string text = g_line_text[i];
+    line_mutex().give();
+    lv_label_set_text(g_portrait_lines[i], text.c_str());
+  }
 
   lv_screen_load(g_portrait_screen);
   repaint_schedule();
@@ -253,9 +259,93 @@ pros::Mutex& line_mutex() {
   return mutex;
 }
 
+// One-shot work that has to happen on the daemon for the same reason the print
+// lines do: building and loading a screen invalidates areas, and the assert
+// fires the moment that lands mid-frame. The caller publishes the request and
+// blocks until the daemon has run it, so the public calls stay synchronous and
+// keep their ordering -- a rotation set right after ez::as::initialize is in
+// effect before the next line of user code runs.
+constexpr int WORK_LCD_INIT = 1 << 0;
+constexpr int WORK_ROTATION = 1 << 1;
+constexpr int WORK_WAIT_MS = 1000;
+
+int g_work_pending = 0;
+int g_work_rotation = 0;
+uint32_t g_work_submitted = 0;
+uint32_t g_work_done = 0;
+
+void rotation_apply(int degrees);
+void lines_replay(lv_indev_t* indev, lv_indev_data_t* data);
+
+// Call with line_mutex() held. False means the display driver has no input
+// device yet, so there is no daemon to hand work to.
+bool indev_hook_install() {
+  if (g_indev_read_orig != nullptr) return true;
+
+  lv_indev_t* indev = lv_indev_get_next(nullptr);
+  lv_indev_read_cb_t orig = indev != nullptr ? lv_indev_get_read_cb(indev) : nullptr;
+  if (orig == nullptr || orig == lines_replay) return false;
+
+  g_indev_read_orig = orig;
+  lv_indev_set_read_cb(indev, lines_replay);
+  return true;
+}
+
+// Runs on the display daemon's task, ahead of the line replay so a deferred
+// LLEMU exists before any line gets pushed into it.
+void work_run() {
+  line_mutex().take();
+  int work = g_work_pending;
+  int degrees = g_work_rotation;
+  uint32_t submitted = g_work_submitted;
+  g_work_pending = 0;
+  line_mutex().give();
+
+  if (work == 0) return;
+
+  if (work & WORK_LCD_INIT) pros::lcd::initialize();
+  if (work & WORK_ROTATION) rotation_apply(degrees);
+
+  line_mutex().take();
+  g_work_done = submitted;
+  line_mutex().give();
+}
+
+void work_submit(int work, int degrees) {
+  line_mutex().take();
+  bool marshaled = indev_hook_install();
+  uint32_t ticket = 0;
+  if (marshaled) {
+    g_work_pending |= work;
+    if (work & WORK_ROTATION) g_work_rotation = degrees;
+    ticket = ++g_work_submitted;
+  }
+  line_mutex().give();
+
+  // Before the input device exists there is no daemon frame to race, so the
+  // unmarshaled call is what it always was.
+  if (!marshaled) {
+    if (work & WORK_LCD_INIT) pros::lcd::initialize();
+    if (work & WORK_ROTATION) rotation_apply(degrees);
+    return;
+  }
+
+  uint32_t start = pros::millis();
+  while (pros::millis() - start < WORK_WAIT_MS) {
+    pros::delay(2);
+    line_mutex().take();
+    bool done = g_work_done >= ticket;
+    line_mutex().give();
+    if (done) return;
+  }
+  printf("[display] Display daemon didn't pick up screen work within %d ms.\n", WORK_WAIT_MS);
+}
+
 // Runs on the display daemon's task, where label writes are safe.
 void lines_replay(lv_indev_t* indev, lv_indev_data_t* data) {
   g_indev_read_orig(indev, data);
+
+  work_run();
 
   // Left dirty until LLEMU exists so nothing prints into null labels.
   if (!g_portrait_on && !pros::lcd::is_initialized()) return;
@@ -279,36 +369,24 @@ void screen_line_publish(int line, std::string text) {
   line_mutex().take();
   g_line_text[line] = text;
   g_line_dirty[line] = true;
-
-  if (g_indev_read_orig == nullptr) {
-    lv_indev_t* indev = lv_indev_get_next(nullptr);
-    lv_indev_read_cb_t orig = indev != nullptr ? lv_indev_get_read_cb(indev) : nullptr;
-    if (orig != nullptr && orig != lines_replay) {
-      g_indev_read_orig = orig;
-      lv_indev_set_read_cb(indev, lines_replay);
-    }
-  }
+  indev_hook_install();
   line_mutex().give();
 }
-}  // namespace
 
-void screen_rotation_set(int degrees) {
+// Runs on the display daemon, off work_run(). Everything here builds or loads
+// screens, which is exactly what can't happen from a user task.
+void rotation_apply(int degrees) {
   lv_display_rotation_t rot;
   switch (degrees) {
-    case 0:   rot = LV_DISPLAY_ROTATION_0; break;
     case 90:  rot = LV_DISPLAY_ROTATION_90; break;
     case 180: rot = LV_DISPLAY_ROTATION_180; break;
     case 270: rot = LV_DISPLAY_ROTATION_270; break;
-    default:
-      printf("[display] Invalid rotation %d; use 0, 90, 180, or 270.\n", degrees);
-      return;
+    default:  rot = LV_DISPLAY_ROTATION_0; break;
   }
 
   lv_display_t* disp = lv_display_get_default();
-  if (disp == nullptr) {
-    printf("[display] No LVGL display yet; initialize the screen first.\n");
-    return;
-  }
+  if (disp == nullptr) return;
+
   // Installed before the rotation takes effect so no rotated band is ever
   // flushed through the kernel's unrotated path. At 0 it passes through, so
   // it is left in place once installed.
@@ -321,6 +399,25 @@ void screen_rotation_set(int degrees) {
     portrait_load();
   else
     portrait_unload();
+}
+}  // namespace
+
+void screen_lcd_initialize() { work_submit(WORK_LCD_INIT, 0); }
+
+void screen_rotation_set(int degrees) {
+  if (degrees != 0 && degrees != 90 && degrees != 180 && degrees != 270) {
+    printf("[display] Invalid rotation %d; use 0, 90, 180, or 270.\n", degrees);
+    return;
+  }
+  if (lv_display_get_default() == nullptr) {
+    printf("[display] No LVGL display yet; initialize the screen first.\n");
+    return;
+  }
+
+  // The rotation and the screen it loads run on the display daemon; this
+  // doesn't return until they have, so the rotation is live by the time the
+  // caller's next line runs.
+  work_submit(WORK_ROTATION, degrees);
 
   printf("[display] Screen rotation set to %d degrees.\n", degrees);
 }
@@ -345,6 +442,10 @@ void screen_line_publish(int line, std::string text) {
   pros::lcd::set_text(line, text);
 }
 }  // namespace
+
+// LVGL 8 has no rendering_in_progress assert either, so there is nothing to
+// marshal and LLEMU comes up on the calling task as it always did.
+void screen_lcd_initialize() { pros::lcd::initialize(); }
 
 void screen_rotation_set(int degrees) {
   lv_disp_rot_t rot;

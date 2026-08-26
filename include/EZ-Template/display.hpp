@@ -4,6 +4,13 @@
 
 namespace ez {
 
+/// Brings up LLEMU (pros::lcd::initialize) from the display daemon's task
+/// instead of the caller's, so building its widget tree can't land in the
+/// middle of a frame. Returns once LLEMU is actually up, so button callbacks
+/// can be registered and lines printed on the next statement.
+/// ez::as::initialize() routes through here.
+void screen_lcd_initialize();
+
 /// Rotates the brain screen in 90-degree steps for brains mounted sideways or
 /// upside down. Accepts 0, 90, 180, or 270 (measured clockwise); other values
 /// are rejected with a printed message. Call after the screen is initialized
