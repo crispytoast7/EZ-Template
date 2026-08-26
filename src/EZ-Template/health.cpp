@@ -27,9 +27,35 @@ void device_add(pros::Device* device, const char* name) {
 Report preflight(ez::Drive& chassis, pros::Controller& controller) {
   Report r;
 
+  int focused_port = chassis.imu != nullptr ? chassis.imu->get_port() : -1;
   if (chassis.imu == nullptr || !chassis.imu->is_installed()) {
     r.imu_ok = false;
-    printf("[health] IMU on port %d not responding\n", chassis.imu != nullptr ? chassis.imu->get_port() : -1);
+    printf("[health] IMU on port %d not responding\n", focused_port);
+  }
+
+  // Every backup from a redundant-IMU constructor gets checked too, since a
+  // dead backup is invisible in normal use right up until the focused IMU
+  // fails and there's nothing to fall back to.
+  //
+  // The configured set comes from imu_scale_map rather than good_imus:
+  // good_imus is the still-usable ones and drive_imu_calibrate() erases
+  // whatever failed to calibrate, while imu_scale_map is keyed by port when
+  // the Drive is built and is never pruned. So a port that imu_scale_map knows
+  // and good_imus doesn't is an IMU that already dropped out.
+  for (auto& [port, scale] : chassis.imu_scale_map) {
+    if (port == focused_port) continue;
+
+    pros::Imu* backup = nullptr;
+    for (auto* candidate : chassis.good_imus) {
+      if (candidate->get_port() == port) {
+        backup = candidate;
+        break;
+      }
+    }
+    if (backup == nullptr || !backup->is_installed()) {
+      r.imus_bad++;
+      printf("[health] Backup IMU on port %d not responding\n", port);
+    }
   }
 
   auto check_motors = [&](std::vector<pros::Motor>& motors) {
@@ -79,8 +105,15 @@ Report preflight(ez::Drive& chassis, pros::Controller& controller) {
 
   if (!r.all_ok()) {
     controller.rumble("---");
+    // Backups only widen the imu field when one of them is actually bad, so a
+    // single-IMU drive reads exactly as it did before there were backups.
+    char imu_state[32];
+    if (r.imus_bad > 0)
+      snprintf(imu_state, sizeof(imu_state), "%s + %d backup BAD", r.imu_ok ? "ok" : "BAD", r.imus_bad);
+    else
+      snprintf(imu_state, sizeof(imu_state), "%s", r.imu_ok ? "ok" : "BAD");
     printf("[health] PREFLIGHT FAILED: imu %s, %d motor(s), %d tracker(s), %d device(s)\n",
-           r.imu_ok ? "ok" : "BAD", r.motors_bad, r.trackers_bad, r.devices_bad);
+           imu_state, r.motors_bad, r.trackers_bad, r.devices_bad);
   } else {
     printf("[health] Preflight OK.\n");
   }
