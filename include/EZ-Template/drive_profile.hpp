@@ -72,8 +72,65 @@ DriveProfilePair drive_characterize(ez::Drive& chassis, pros::Controller& contro
 
 /// Adds "Drive Characterize" to the auton selector so the test can be run
 /// like any other routine. Call it in initialize() after your own
-/// autons_add() — the entry is appended, nothing already registered is lost.
+/// autons_add() - the entry is appended, nothing already registered is lost.
 void drive_characterize_register(ez::Drive& chassis);
+
+/////
+//
+// Straightness self-test
+//
+/////
+
+/// What one open-loop run down the runway measured.
+struct DriveStraightnessRun {
+  double heading_deg = 0.0;   ///< imu drift at the end; sign is which way it pulled
+  double lateral_in = 0.0;    ///< odom sideways drift; sign matches heading_deg's frame
+  double distance_in = 0.0;   ///< how far the average drive sensor actually got
+  bool lateral_valid = false;  ///< false when odom is off, so lateral_in means nothing
+  bool aborted = false;        ///< a runway or heading limit cut this run short
+  bool ran = false;            ///< false when the phase was skipped entirely
+};
+
+/// Both halves of the comparison.
+struct DriveStraightnessResult {
+  DriveStraightnessRun off;  ///< compensation forced off
+  DriveStraightnessRun on;   ///< compensation forced on, only if a profile is loaded
+  bool cancelled = false;    ///< B was pressed at the prompt
+};
+
+/// Interactive, wheels-on-the-floor straightness measurement. Prompts on the
+/// controller (A runs, B cancels), then drives the robot down the runway
+/// OPEN LOOP - both sides commanded the same power, no PID and no heading
+/// correction - so what the drive does is only ever its own mechanical and
+/// electrical asymmetry. A drive whose two sides are matched ends where it
+/// started pointing; one that is not veers, and the veer is the number this
+/// reports.
+///
+/// It measures heading drift in degrees from the imu (sign is which way the
+/// robot pulled) and, when odometry is on, sideways drift in inches. Odometry
+/// needs no tracking wheels for this: with none configured EZ integrates the
+/// pose from the drive encoders and the imu, which is exactly the trackerless
+/// case, so lateral drift is available on a bone-stock chassis. Each run is
+/// driven back in reverse so the robot ends roughly where it began.
+///
+/// The run is done twice, once with drive_profile_enable() forced off and once
+/// forced on, and the two are printed side by side. That comparison is the
+/// point: it turns "the profile should help" into a measured before and after,
+/// and a profile that makes the drift worse shows up here instead of in a
+/// match. Phase 2 is skipped, with a printed reason, when no valid profile is
+/// loaded. Whatever enable state compensation was in going in is restored.
+///
+/// Needs about 8 ft (72 in) of clear runway straight ahead, plus room on
+/// either side for a drive that veers. Each phase gives up after 4 seconds,
+/// and cuts the motors if the drive passes 80 in or turns more than 30 deg, so
+/// a dead encoder stops the robot instead of running it into a wall. Takes
+/// roughly 20 seconds. Returns what it measured; check off.ran and on.ran.
+DriveStraightnessResult drive_straightness_test(ez::Drive& chassis, pros::Controller& controller);
+
+/// Adds "Straightness Test" to the auton selector so the test can be run like
+/// any other routine. Call it in initialize() after your own autons_add() -
+/// the entry is appended, nothing already registered is lost.
+void drive_straightness_register(ez::Drive& chassis);
 
 /////
 //
