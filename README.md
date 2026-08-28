@@ -83,6 +83,8 @@ deadband skip remaps every command into `[kS, 127]`, so a pid output of 3 actual
 
 saved under `dp-ls` / `dp-lv` / `dp-rs` / `dp-rv` in the same `/usd/pid_constants.txt` everything else uses.
 
+and to prove it works: `ez::drive_straightness_register(chassis)` adds a "Straightness Test" selector entry — the robot drives open-loop for 6 ft and reads its own drift (imu degrees + odom inches, no trackers needed), once with the profile off and once with it on, then prints the before/after. needs 8 ft clear ahead. also handy as a 30-second check after any drive rebuild.
+
 ### dsr — distance sensor wall resets (`EZ-Template/dsr.hpp`)
 
 uses the field walls as a ruler to fix odom drift. register a distance sensor per side with its offset from robot center; `correct()` figures out which wall each sensor faces and overwrites that axis of the pose. bad readings get rejected (low confidence, out of range, more than 15 deg off square, or an implied jump over 18 in — something in the way).
