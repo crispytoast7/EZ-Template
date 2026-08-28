@@ -32,7 +32,10 @@ void AutonSelector::selected_auton_call() {
 }
 
 void AutonSelector::autons_add(std::vector<Auton> autons) {
-  auton_count += autons.size();
-  auton_page_current = 0;
+  // This replaces the auton list (call it once with everything). The count is
+  // rebuilt from what actually exists - autons plus blank pages - so a second
+  // call can't leave pages pointing at autons that are gone.
   Autons.assign(autons.begin(), autons.end());
+  auton_page_current = 0;
+  auton_count = Autons.size() + ez::as::amount_of_blank_pages;
 }
