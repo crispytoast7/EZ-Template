@@ -14,7 +14,6 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #include "EZ-Template/display.hpp"
 #include "EZ-Template/dsr.hpp"
 #include "EZ-Template/health.hpp"
-#include "EZ-Template/json_auton.hpp"
 #include "EZ-Template/piston.hpp"
 #include "EZ-Template/sdcard.hpp"
 #include "EZ-Template/slew.hpp"

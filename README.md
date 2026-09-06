@@ -118,19 +118,6 @@ ez::screen_rotation_set(90);  // once, in initialize(), AFTER ez::as::initialize
 
 for sideways/upside-down brain mounts. at 90/270 the selector rebuilds as a portrait copy of the llemu screen (same theme, long lines wrap, buttons forward to llemu's real ones); 180 is the stock screen flipped. touch works at every angle — lvgl transforms pointer input, and the flush path software-rotates each rendered band onto the panel (lvgl 9 dropped built-in rotation). don't call it in a loop — once.
 
-### json autons (`EZ-Template/json_auton.hpp`)
-
-> heads up: this module is nowhere near done. the format and executor are still changing a lot — don't build anything on it yet.
-
-runs autons from `/usd/autons.json` — each shows up in the auton selector by name. pure-pursuit runs, boomerang arrival headings, reverse, per-point speed/waits, and a built-in `dsr` action that squares up and resets the pose. other actions go to a handler you set:
-
-```cpp
-ez::json_action_handler_set([](const std::string& a) {
-  if (a == "intake_on") { intake.move(127); return; }
-});
-ez::json_register_selector(chassis);  // in initialize()
-```
-
 ## what's on `pros-4.2.2-enhancements`
 
 stock ez-template + kernel 4.2.2, growing one verified feature at a time. stock readme and example project stay stock over there — this list is the changelog:
